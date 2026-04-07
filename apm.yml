@@ -1,6 +1,11 @@
 name: bincast
-version: 0.1.3
+version: 0.1.5
 description: Release engineering skills for Rust binaries — ship to every package manager
 author: benelser
 license: MIT
 type: skill
+
+dependencies:
+  apm: []
+  mcp:
+    - microsoft/playwright-mcp

@@ -98,10 +98,11 @@ The `!` prefix runs it in the current session. The wizard will ask for profile a
 
 1. Run `bincast check` to validate
 2. Review generated files: `cat bincast.toml`
-3. Set secrets if prompted (see `../bincast-shared/SKILL.md` for secret setup)
+3. **Set up secrets** — invoke `../bincast-setup-secrets/SKILL.md` to create tokens and set GitHub Actions secrets. This is the critical next step before the first release.
 
 ## See Also
 
+- `../bincast-setup-secrets/SKILL.md` — create tokens and set secrets (browser-assisted)
 - `../bincast-shared/SKILL.md` — installation and config reference
 - `../bincast-release/SKILL.md` — releasing after setup
 
