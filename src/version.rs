@@ -100,6 +100,11 @@ pub fn run(bump: &str) -> Result<()> {
         // bincast.toml doesn't have a version field currently, skip
     }
 
+    // Update Cargo.lock by running cargo check
+    let _ = Command::new("cargo")
+        .args(["check", "--quiet"])
+        .output();
+
     // Git commit
     let output = Command::new("git")
         .args(["add", "Cargo.toml", "Cargo.lock"])
