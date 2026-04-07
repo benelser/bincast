@@ -96,26 +96,36 @@ impl Pipe for PyPIPublishPipe {
             .collect();
 
         for wheel in &wheels {
-            let path = wheel.path.to_str().ok_or("non-utf8 wheel path")?;
             eprintln!("  uploading {} to PyPI...", wheel.path.display());
 
-            let output = std::process::Command::new("curl")
-                .args([
-                    "-s",
-                    "-X", "POST",
-                    "-u", &format!("__token__:{token}"),
-                    "-F", ":action=file_upload",
-                    "-F", "protocol_version=1",
-                    &format!("-F content=@{path}"),
-                    &std::env::var("RELEASER_PYPI_URL")
-                        .unwrap_or_else(|_| "https://upload.pypi.org/legacy/".to_string()),
-                ])
-                .output()
-                .map_err(|e| format!("curl failed: {e}"))?;
+            let pypi_url = std::env::var("RELEASER_PYPI_URL")
+                .unwrap_or_else(|_| "https://upload.pypi.org/legacy/".to_string());
 
-            if !output.status.success() {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                return Err(format!("PyPI upload failed: {stderr}"));
+            let req = crate::http::client::Request {
+                method: crate::http::client::Method::Post,
+                url: &pypi_url,
+                headers: vec![
+                    ("Authorization", format!("Basic {}", base64_encode(&format!("__token__:{token}")))),
+                ],
+                body: crate::http::client::Body::Multipart(vec![
+                    crate::http::client::FormField {
+                        name: ":action",
+                        value: crate::http::client::FormValue::Text("file_upload"),
+                    },
+                    crate::http::client::FormField {
+                        name: "protocol_version",
+                        value: crate::http::client::FormValue::Text("1"),
+                    },
+                    crate::http::client::FormField {
+                        name: "content",
+                        value: crate::http::client::FormValue::File(&wheel.path),
+                    },
+                ]),
+            };
+
+            let resp = crate::http::client::request(&req, 2)?;
+            if !resp.is_success() {
+                return Err(format!("PyPI upload failed ({}): {}", resp.status, resp.body));
             }
         }
 
@@ -308,6 +318,32 @@ impl Pipe for ScoopDispatchPipe {
             description: format!("would dispatch repository event to '{bucket}' with version + checksums"),
         }
     }
+}
+
+/// Base64 encode — for HTTP Basic auth. No deps.
+fn base64_encode(input: &str) -> String {
+    const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let bytes = input.as_bytes();
+    let mut result = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let b0 = chunk[0] as u32;
+        let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };
+        let b2 = if chunk.len() > 2 { chunk[2] as u32 } else { 0 };
+        let n = (b0 << 16) | (b1 << 8) | b2;
+        result.push(CHARS[((n >> 18) & 63) as usize] as char);
+        result.push(CHARS[((n >> 12) & 63) as usize] as char);
+        if chunk.len() > 1 {
+            result.push(CHARS[((n >> 6) & 63) as usize] as char);
+        } else {
+            result.push('=');
+        }
+        if chunk.len() > 2 {
+            result.push(CHARS[(n & 63) as usize] as char);
+        } else {
+            result.push('=');
+        }
+    }
+    result
 }
 
 fn parse_npm_platform(target: &str) -> (&str, &str) {

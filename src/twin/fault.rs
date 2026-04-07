@@ -158,8 +158,8 @@ mod tests {
 
         unsafe { std::env::remove_var("RELEASER_GITHUB_API_URL"); }
 
-        // Should fail because the proxy returned 500
-        assert!(result.is_err(), "should have failed with injected 500");
+        // Client retries on 500 — should succeed on 2nd attempt via twin
+        assert!(result.is_ok(), "client should retry past injected 500");
         assert_eq!(proxy.failure_count(), 1);
     }
 
