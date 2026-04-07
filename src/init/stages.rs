@@ -50,14 +50,18 @@ pub fn detect(project_dir: &Path) -> Result<Detection> {
         _ => Vec::new(),
     };
 
-    let (owner, repo_name) = cargo::parse_github_url(
-        meta.repository.as_deref().unwrap_or("")
-    )
-    .map(|(o, r)| (o.to_string(), r.to_string()))
-    .unwrap_or_else(|| {
-        // Try git remote
-        git_remote_owner_repo().unwrap_or(("user".into(), meta.name.clone()))
-    });
+    // Detect repository URL: Cargo.toml → git remote → empty
+    let repository = meta.repository.clone()
+        .filter(|r| !r.is_empty())
+        .or_else(|| {
+            git_remote_owner_repo()
+                .map(|(o, r)| format!("https://github.com/{o}/{r}"))
+        })
+        .unwrap_or_default();
+
+    let (owner, repo_name) = cargo::parse_github_url(&repository)
+        .map(|(o, r)| (o.to_string(), r.to_string()))
+        .unwrap_or_else(|| ("user".into(), meta.name.clone()));
 
     let gh_available = Command::new("gh").arg("--version").output().is_ok();
 
@@ -65,7 +69,7 @@ pub fn detect(project_dir: &Path) -> Result<Detection> {
         name: meta.name.clone(),
         version: meta.version.clone(),
         _binary: meta.binary.clone(),
-        repository: meta.repository.clone().unwrap_or_default(),
+        repository,
         owner,
         repo_name,
         is_workspace,

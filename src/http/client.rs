@@ -69,6 +69,9 @@ impl Response {
     }
 }
 
+// Connect timeout not used with TcpStream::connect (hostname-based)
+// but kept for documentation of the intended timeout behavior.
+#[allow(dead_code)]
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const READ_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_REDIRECTS: u32 = 5;
@@ -261,10 +264,10 @@ fn request_tcp(req: &Request, body: &Body) -> Result<Response, String> {
     let (host, port, path) = parse_url(req.url)?;
     let addr = format!("{host}:{port}");
 
-    let mut stream = TcpStream::connect_timeout(
-        &addr.parse().map_err(|e| format!("invalid address {addr}: {e}"))?,
-        CONNECT_TIMEOUT,
-    ).map_err(|e| format!("connect to {addr}: {e}"))?;
+    // Use connect() not connect_timeout() — connect() accepts hostnames
+    // and does DNS resolution. Set timeouts after connecting.
+    let mut stream = TcpStream::connect(&addr)
+        .map_err(|e| format!("connect to {addr}: {e}"))?;
 
     stream.set_read_timeout(Some(READ_TIMEOUT)).ok();
     stream.set_write_timeout(Some(Duration::from_secs(30))).ok();
@@ -294,10 +297,8 @@ fn request_tls(req: &Request, body: &Body) -> Result<Response, String> {
         .map_err(|e| format!("TLS setup: {e}"))?;
 
     let addr = format!("{host}:{port}");
-    let mut sock = TcpStream::connect_timeout(
-        &addr.parse().map_err(|e| format!("invalid address {addr}: {e}"))?,
-        CONNECT_TIMEOUT,
-    ).map_err(|e| format!("connect to {addr}: {e}"))?;
+    let mut sock = TcpStream::connect(&addr)
+        .map_err(|e| format!("connect to {addr}: {e}"))?;
 
     sock.set_read_timeout(Some(READ_TIMEOUT)).ok();
     sock.set_write_timeout(Some(Duration::from_secs(30))).ok();
