@@ -12,7 +12,7 @@ pub fn load(path: &std::path::Path) -> Result<ReleaserConfig> {
     let content = std::fs::read_to_string(path).map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
             crate::error::Error::Config(format!(
-                "{} not found — run 'releaser init' to create one",
+                "{} not found — run 'bincast init' to create one",
                 path.display()
             ))
         } else {

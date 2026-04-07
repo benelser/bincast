@@ -1,8 +1,8 @@
 # Add this to your Cargo.toml for cargo-binstall support:
 
 [package.metadata.binstall]
-pkg-url = "https://github.com/benelser/releaser/releases/download/v{{ version }}/releaser-{{ target }}{{ archive-suffix }}"
-bin-dir = "releaser{{ binary-ext }}"
+pkg-url = "https://github.com/benelser/bincast/releases/download/v{{ version }}/bincast-{{ target }}{{ archive-suffix }}"
+bin-dir = "bincast{{ binary-ext }}"
 pkg-fmt = "tgz"
 
 [package.metadata.binstall.overrides.x86_64-pc-windows-msvc]

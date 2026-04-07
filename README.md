@@ -1,9 +1,9 @@
-# releaser
+# bincast
 
 Ship your Rust binary to every package manager with one command.
 
 ```bash
-releaser publish v0.1.0
+bincast publish v0.1.0
 ```
 
 Your binary is now available via:
@@ -22,9 +22,9 @@ irm url | iex                 # Windows
 ## Quick Start
 
 ```bash
-cargo install releaser
-releaser init
-releaser generate
+cargo install bincast
+bincast init
+bincast generate
 git add . && git commit -m "add release infrastructure"
 git tag v0.1.0 && git push --tags
 ```
@@ -34,10 +34,10 @@ git tag v0.1.0 && git push --tags
 ### 1. Initialize
 
 ```bash
-releaser init
+bincast init
 ```
 
-Reads your `Cargo.toml` and writes a `releaser.toml`:
+Reads your `Cargo.toml` and writes a `bincast.toml`:
 
 ```toml
 [package]
@@ -81,7 +81,7 @@ enabled = true
 ### 2. Generate
 
 ```bash
-releaser generate
+bincast generate
 ```
 
 Produces everything you need, ready to commit:
@@ -110,7 +110,7 @@ git push --tags
 Or publish locally:
 
 ```bash
-releaser publish v0.1.0
+bincast publish v0.1.0
 ```
 
 This builds the binary, creates archives, computes checksums, uploads to GitHub Releases, publishes to PyPI/npm/crates.io, and dispatches updates to your Homebrew tap and Scoop bucket.
@@ -118,14 +118,14 @@ This builds the binary, creates archives, computes checksums, uploads to GitHub 
 ### 4. Validate
 
 ```bash
-releaser check
+bincast check
 ```
 
 Validates config syntax, checks name availability on PyPI/npm/crates.io, and verifies your setup before you tag.
 
 ## Channels
 
-| Channel | What releaser produces |
+| Channel | What bincast produces |
 |---------|----------------------|
 | **GitHub Releases** | Archives (tar.gz/zip) + SHA-256 checksums + SLSA attestation |
 | **PyPI** | maturin wheels with `bindings = "bin"`, OIDC trusted publishing |

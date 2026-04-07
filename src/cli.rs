@@ -1,11 +1,11 @@
 /// Minimal CLI argument parser — no dependencies.
-/// Supports: releaser <subcommand> [options]
+/// Supports: bincast <subcommand> [options]
 
 #[derive(Debug)]
 pub enum Command {
     Init,
     Generate {
-        /// Override config file path (default: releaser.toml)
+        /// Override config file path (default: bincast.toml)
         config: Option<String>,
     },
     Check {
@@ -44,7 +44,7 @@ pub fn parse_from(args: &[String]) -> Result<Command, String> {
             let version = args
                 .get(1)
                 .filter(|a| !a.starts_with('-'))
-                .ok_or_else(|| "usage: releaser publish <version> [--dry-run]".to_string())?
+                .ok_or_else(|| "usage: bincast publish <version> [--dry-run]".to_string())?
                 .clone();
             let dry_run = args.iter().any(|a| a == "--dry-run");
             let config = extract_option(args, "--config");
@@ -57,7 +57,7 @@ pub fn parse_from(args: &[String]) -> Result<Command, String> {
         "--version" | "-V" | "version" => Ok(Command::Version),
         "--help" | "-h" | "help" => Ok(Command::Help),
         other => Err(format!(
-            "unknown command: '{other}'\n\nUsage: releaser <command>\n\nCommands:\n  init       Initialize releaser.toml from Cargo.toml\n  generate   Generate CI workflows, install scripts, and package manifests\n  check      Validate config and check name availability\n  publish    Build, package, and publish to all channels\n  help       Show this help message"
+            "unknown command: '{other}'\n\nUsage: bincast <command>\n\nCommands:\n  init       Initialize bincast.toml from Cargo.toml\n  generate   Generate CI workflows, install scripts, and package manifests\n  check      Validate config and check name availability\n  publish    Build, package, and publish to all channels\n  help       Show this help message"
         )),
     }
 }
@@ -70,20 +70,20 @@ fn extract_option(args: &[String], flag: &str) -> Option<String> {
 
 pub fn print_help() {
     eprintln!(
-        "releaser {}
+        "bincast {}
 Ship your Rust binary to every package manager with one command.
 
 USAGE:
-    releaser <COMMAND>
+    bincast <COMMAND>
 
 COMMANDS:
-    init       Initialize releaser.toml from Cargo.toml
+    init       Initialize bincast.toml from Cargo.toml
     generate   Generate CI workflows, install scripts, and package manifests
     check      Validate config and check name availability
     publish    Build, package, and publish to all channels
 
 OPTIONS:
-    --config <PATH>    Path to releaser.toml (default: ./releaser.toml)
+    --config <PATH>    Path to bincast.toml (default: ./bincast.toml)
     --dry-run          Publish: simulate without publishing
     -V, --version      Print version
     -h, --help         Print help",

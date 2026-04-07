@@ -43,7 +43,7 @@ enabled = true
 "#
 }
 
-fn setup_and_generate(config_toml: &str) -> (PathBuf, Vec<releaser::generate::GeneratedFile>) {
+fn setup_and_generate(config_toml: &str) -> (PathBuf, Vec<bincast::generate::GeneratedFile>) {
     use std::time::{SystemTime, UNIX_EPOCH};
     let ts = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
     let dir = std::env::temp_dir().join(format!("releaser-test-{}-{}", std::process::id(), ts));
@@ -51,8 +51,8 @@ fn setup_and_generate(config_toml: &str) -> (PathBuf, Vec<releaser::generate::Ge
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join("releaser.toml"), config_toml).unwrap();
 
-    let config = releaser::config::parse(config_toml).unwrap();
-    let files = releaser::generate::run(&config, &dir).unwrap();
+    let config = bincast::config::parse(config_toml).unwrap();
+    let files = bincast::generate::run(&config, &dir).unwrap();
     (dir, files)
 }
 
@@ -218,11 +218,11 @@ fn test_generated_ci_passes_workflow_validation() {
     let (dir, files) = setup_and_generate(fixture_config());
 
     let ci = files.iter().find(|f| f.path.ends_with("release.yml")).unwrap();
-    let issues = releaser::generate::validate::validate_workflow(&ci.content);
+    let issues = bincast::generate::validate::validate_workflow(&ci.content);
 
     let errors: Vec<_> = issues
         .iter()
-        .filter(|i| i.severity == releaser::generate::validate::Severity::Error)
+        .filter(|i| i.severity == bincast::generate::validate::Severity::Error)
         .collect();
 
     assert!(
@@ -250,11 +250,11 @@ release = true
 "#;
     let (dir, files) = setup_and_generate(config);
     let ci = files.iter().find(|f| f.path.ends_with("release.yml")).unwrap();
-    let issues = releaser::generate::validate::validate_workflow(&ci.content);
+    let issues = bincast::generate::validate::validate_workflow(&ci.content);
 
     let errors: Vec<_> = issues
         .iter()
-        .filter(|i| i.severity == releaser::generate::validate::Severity::Error)
+        .filter(|i| i.severity == bincast::generate::validate::Severity::Error)
         .collect();
 
     assert!(

@@ -11,15 +11,15 @@ fn temp_project(name: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let dir = std::env::temp_dir().join(format!("releaser-e2e-{name}-{ts}"));
+    let dir = std::env::temp_dir().join(format!("bincast-e2e-{name}-{ts}"));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     dir
 }
 
-fn releaser_bin() -> PathBuf {
+fn bincast_bin() -> PathBuf {
     // cargo sets this env var when running integration tests
-    PathBuf::from(env!("CARGO_BIN_EXE_releaser"))
+    PathBuf::from(env!("CARGO_BIN_EXE_bincast"))
 }
 
 fn write_cargo_toml(dir: &PathBuf) {
@@ -39,7 +39,7 @@ repository = "https://github.com/user/test-tool"
     fs::write(dir.join("src/main.rs"), "fn main() { println!(\"hello\"); }").unwrap();
 }
 
-fn write_releaser_toml(dir: &PathBuf) {
+fn write_bincast_toml(dir: &PathBuf) {
     fs::write(
         dir.join("releaser.toml"),
         r#"[package]
@@ -83,26 +83,26 @@ enabled = true
 
 #[test]
 fn test_cli_help() {
-    let bin = releaser_bin();
+    let bin = bincast_bin();
     let output = Command::new(&bin).arg("--help").output().unwrap();
     assert!(output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("releaser"));
+    assert!(stderr.contains("bincast"));
     assert!(stderr.contains("COMMANDS"));
 }
 
 #[test]
 fn test_cli_version() {
-    let bin = releaser_bin();
+    let bin = bincast_bin();
     let output = Command::new(&bin).arg("version").output().unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("releaser 0.1.0"));
+    assert!(stdout.contains("bincast 0.1.0"));
 }
 
 #[test]
 fn test_cli_unknown_command() {
-    let bin = releaser_bin();
+    let bin = bincast_bin();
     let output = Command::new(&bin).arg("deploy").output().unwrap();
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -115,7 +115,7 @@ fn test_cli_unknown_command() {
 fn test_init_creates_releaser_toml() {
     let dir = temp_project("init");
     write_cargo_toml(&dir);
-    let bin = releaser_bin();
+    let bin = bincast_bin();
 
     let output = Command::new(&bin)
         .arg("init")
@@ -139,8 +139,8 @@ fn test_init_creates_releaser_toml() {
 fn test_init_fails_if_releaser_toml_exists() {
     let dir = temp_project("init-exists");
     write_cargo_toml(&dir);
-    write_releaser_toml(&dir);
-    let bin = releaser_bin();
+    write_bincast_toml(&dir);
+    let bin = bincast_bin();
 
     let output = Command::new(&bin)
         .arg("init")
@@ -158,7 +158,7 @@ fn test_init_fails_if_releaser_toml_exists() {
 #[test]
 fn test_init_fails_without_cargo_toml() {
     let dir = temp_project("init-nocargo");
-    let bin = releaser_bin();
+    let bin = bincast_bin();
 
     let output = Command::new(&bin)
         .arg("init")
@@ -176,8 +176,8 @@ fn test_init_fails_without_cargo_toml() {
 #[test]
 fn test_generate_produces_all_files() {
     let dir = temp_project("generate-all");
-    write_releaser_toml(&dir);
-    let bin = releaser_bin();
+    write_bincast_toml(&dir);
+    let bin = bincast_bin();
 
     let output = Command::new(&bin)
         .arg("generate")
@@ -204,8 +204,8 @@ fn test_generate_produces_all_files() {
 #[test]
 fn test_generate_ci_is_valid() {
     let dir = temp_project("generate-valid");
-    write_releaser_toml(&dir);
-    let bin = releaser_bin();
+    write_bincast_toml(&dir);
+    let bin = bincast_bin();
 
     let output = Command::new(&bin)
         .arg("generate")
@@ -224,10 +224,10 @@ fn test_generate_ci_is_valid() {
     let ci = fs::read_to_string(&ci_path).unwrap();
 
     // Validate with our workflow validator
-    let issues = releaser::generate::validate::validate_workflow(&ci);
+    let issues = bincast::generate::validate::validate_workflow(&ci);
     let errors: Vec<_> = issues
         .iter()
-        .filter(|i| i.severity == releaser::generate::validate::Severity::Error)
+        .filter(|i| i.severity == bincast::generate::validate::Severity::Error)
         .collect();
 
     assert!(
@@ -261,7 +261,7 @@ release = true
 "#,
     )
     .unwrap();
-    let bin = releaser_bin();
+    let bin = bincast_bin();
 
     let output = Command::new(&bin)
         .arg("generate")
@@ -282,7 +282,7 @@ release = true
 fn test_init_then_generate_works() {
     let dir = temp_project("init-generate");
     write_cargo_toml(&dir);
-    let bin = releaser_bin();
+    let bin = bincast_bin();
 
     // Step 1: init
     let output = Command::new(&bin)
@@ -315,8 +315,8 @@ fn test_init_then_generate_works() {
 #[test]
 fn test_publish_dry_run() {
     let dir = temp_project("publish-dry");
-    write_releaser_toml(&dir);
-    let bin = releaser_bin();
+    write_bincast_toml(&dir);
+    let bin = bincast_bin();
 
     let output = Command::new(&bin)
         .args(["publish", "v0.1.0", "--dry-run"])

@@ -4,10 +4,10 @@
 use std::fs;
 use std::path::PathBuf;
 
-use releaser::twin::{GitHubTwin, PyPITwin, NpmTwin, CratesTwin, FaultProxy};
-use releaser::config;
-use releaser::pipeline::Context;
-use releaser::publish;
+use bincast::twin::{GitHubTwin, PyPITwin, NpmTwin, CratesTwin, FaultProxy};
+use bincast::config;
+use bincast::pipeline::Context;
+use bincast::publish;
 
 fn temp_dir(name: &str) -> PathBuf {
     let ts = std::time::SystemTime::now()
@@ -19,7 +19,7 @@ fn temp_dir(name: &str) -> PathBuf {
     dir
 }
 
-fn full_config() -> releaser::config::ReleaserConfig {
+fn full_config() -> bincast::config::ReleaserConfig {
     config::parse(r#"
 [package]
 name = "twin-test"
@@ -130,15 +130,15 @@ fn test_github_release_flow_against_twin() {
     let config = full_config();
     let mut ctx = Context::with_config(config, false);
     ctx.version = Some("v0.5.0".into());
-    ctx.artifacts.push(releaser::pipeline::Artifact {
+    ctx.artifacts.push(bincast::pipeline::Artifact {
         path: archive,
-        kind: releaser::pipeline::ArtifactKind::Archive,
+        kind: bincast::pipeline::ArtifactKind::Archive,
         target: Some("x86_64-unknown-linux-gnu".into()),
     });
 
     // Run just the GitHub release pipe
-    let pipe = releaser::publish::github::GitHubReleasePipe;
-    use releaser::pipeline::Pipe;
+    let pipe = bincast::publish::github::GitHubReleasePipe;
+    use bincast::pipeline::Pipe;
     pipe.run(&mut ctx).unwrap();
 
     // Verify twin state
@@ -158,7 +158,7 @@ fn test_check_name_availability_against_twins() {
     let twins = TwinEnvironment::start();
 
     // npm twin has no packages — name should be available
-    let result = releaser::http::check_name(releaser::http::Registry::Npm, "@twin/test-tool");
+    let result = bincast::http::check_name(bincast::http::Registry::Npm, "@twin/test-tool");
     assert!(result.unwrap(), "unpublished package should be available");
 
     // Publish a package to npm twin, then check again
@@ -172,7 +172,7 @@ fn test_check_name_availability_against_twins() {
     let mut resp = String::new();
     stream.read_to_string(&mut resp).unwrap();
 
-    let result = releaser::http::check_name(releaser::http::Registry::Npm, "@twin/test-tool");
+    let result = bincast::http::check_name(bincast::http::Registry::Npm, "@twin/test-tool");
     assert!(!result.unwrap(), "published package should be taken");
 }
 
@@ -180,7 +180,7 @@ fn test_check_name_availability_against_twins() {
 fn test_homebrew_dispatch_against_twin() {
     let twins = TwinEnvironment::start();
 
-    releaser::http::github::repository_dispatch(
+    bincast::http::github::repository_dispatch(
         "user", "homebrew-twin-test", "update-formula", "v0.3.0", "test-token"
     ).unwrap();
 
@@ -194,7 +194,7 @@ fn test_homebrew_dispatch_against_twin() {
 fn test_scoop_dispatch_against_twin() {
     let twins = TwinEnvironment::start();
 
-    releaser::http::github::repository_dispatch(
+    bincast::http::github::repository_dispatch(
         "user", "scoop-twin-test", "update-manifest", "v0.3.0", "test-token"
     ).unwrap();
 
@@ -249,14 +249,14 @@ fn test_fault_injection_github_upload_fails() {
     }
 
     // Create release succeeds (request 1)
-    let release = releaser::http::github::create_release("user", "repo", "v9.0.0", "test-token");
+    let release = bincast::http::github::create_release("user", "repo", "v9.0.0", "test-token");
     assert!(release.is_ok(), "create should succeed");
 
     // Upload fails (request 2 = injected 500, retries hit the real twin)
     let dir = temp_dir("fault-upload");
     let file = dir.join("test.tar.gz");
     fs::write(&file, b"data").unwrap();
-    let upload = releaser::http::github::upload_asset("user", "repo", release.unwrap().id, &file, "test-token");
+    let upload = bincast::http::github::upload_asset("user", "repo", release.unwrap().id, &file, "test-token");
 
     // The upload may succeed on retry (requests 3+ go to the real twin via proxy)
     // Key assertion: the fault was injected

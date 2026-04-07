@@ -1,8 +1,8 @@
 [package]
-name = "releaser"
-binary = "releaser"
+name = "bincast"
+binary = "bincast"
 description = "Ship your Rust binary to every package manager with one command"
-repository = "https://github.com/benelser/releaser"
+repository = "https://github.com/benelser/bincast"
 license = "MIT"
 
 [targets]
@@ -19,7 +19,7 @@ platforms = [
 release = true
 
 [distribute.cargo]
-crate_name = "releaser-cli"
+crate_name = "bincast"
 
 [distribute.install_script]
 enabled = true
