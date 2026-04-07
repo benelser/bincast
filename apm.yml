@@ -1,0 +1,6 @@
+name: bincast
+version: 0.1.1
+description: Release engineering skills for Rust binaries — ship to every package manager
+author: benelser
+license: MIT
+type: skill
