@@ -13,15 +13,32 @@ metadata:
 
 # Bincast Reference
 
-## Installation
+## Pre-check: Is bincast installed?
+
+Before using any bincast skill, verify the binary is available:
 
 ```bash
-cargo install bincast
-# or
-brew install benelser/bincast/bincast
-# or
-curl -sSL https://raw.githubusercontent.com/benelser/bincast/main/install.sh | sh
+which bincast && bincast version
 ```
+
+If not installed, install via ONE of these methods:
+
+```bash
+# macOS (recommended)
+brew install benelser/bincast/bincast
+
+# Any platform with Rust
+cargo install bincast
+
+# macOS/Linux without Rust
+curl -sSL https://raw.githubusercontent.com/benelser/bincast/main/install.sh | sh
+
+# Windows
+irm https://raw.githubusercontent.com/benelser/bincast/main/install.ps1 | iex
+```
+
+> [!IMPORTANT]
+> If `bincast` is not found on PATH, you MUST install it before proceeding with any other bincast skill. Guide the user through installation using the commands above.
 
 ## Configuration File: `bincast.toml`
 
