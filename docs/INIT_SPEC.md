@@ -152,6 +152,29 @@ Errors suggest the fix (gh CLI pattern):
 ✗ no git remote found — push your repo first: git remote add origin ...
 ```
 
+## Private Distribution Notes
+
+### Private Homebrew Tap
+
+For private repos, users must set `HOMEBREW_GITHUB_API_TOKEN` before installing:
+
+```bash
+export HOMEBREW_GITHUB_API_TOKEN=ghp_xxxxx
+brew install owner/tap-name/binary-name
+```
+
+Or make the tap repo public (recommended — it only contains the formula, no secrets).
+
+### Private crates.io
+
+crates.io is always public. For private Rust distribution, use a private cargo registry
+via `[registries]` in `.cargo/config.toml`.
+
+### Private npm/PyPI
+
+npm and PyPI support scoped private packages with appropriate auth tokens.
+The bincast-generated CI handles auth via secrets.
+
 ## Testing
 
 Every path tested with expect scripts (AAA pattern):
