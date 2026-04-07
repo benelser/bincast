@@ -435,7 +435,7 @@ pub fn handle_secrets(config: &ReleaserConfig, det: &Detection) {
         secrets_needed.push(SecretInfo {
             name: "CARGO_REGISTRY_TOKEN",
             url: "https://crates.io/settings/tokens",
-            instructions: "    Create at: https://crates.io/settings/tokens\n    Scopes: publish-new, publish-update".into(),
+            instructions: "    1. Verify your email at: https://crates.io/settings/profile\n    2. Create token at: https://crates.io/settings/tokens\n       Scopes: publish-new, publish-update".into(),
         });
     }
     if config.distribute.pypi.is_some() {
