@@ -209,8 +209,11 @@ jobs:
       - name: Compute SHA-256
         shell: bash
         run: |
+          shopt -s nullglob
           for f in {{ name }}-${{ matrix.target }}.* target/wheels/*.whl; do
-            [ -f "$f" ] && shasum -a 256 "$f" > "$f.sha256"
+            if [ -f "$f" ]; then
+              sha256sum "$f" > "$f.sha256" 2>/dev/null || shasum -a 256 "$f" > "$f.sha256"
+            fi
           done
 
       - name: Smoke test
