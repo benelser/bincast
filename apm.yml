@@ -1,6 +1,26 @@
 name: bincast
-version: 0.1.1
+version: 0.1.3
 description: Release engineering skills for Rust binaries — ship to every package manager
 author: benelser
 license: MIT
 type: skill
+
+scripts:
+  setup: |
+    if ! command -v bincast >/dev/null 2>&1; then
+      echo "bincast not found — installing..."
+      if command -v brew >/dev/null 2>&1; then
+        brew install benelser/bincast/bincast
+      elif command -v cargo >/dev/null 2>&1; then
+        cargo install bincast
+      else
+        curl -sSL https://raw.githubusercontent.com/benelser/bincast/main/install.sh | sh
+      fi
+    fi
+    bincast version
+  init: "bincast init"
+  check: "bincast check"
+  release: "bincast release"
+  version-patch: "bincast version patch"
+  version-minor: "bincast version minor"
+  version-major: "bincast version major"
