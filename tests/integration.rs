@@ -41,7 +41,7 @@ repository = "https://github.com/user/test-tool"
 
 fn write_bincast_toml(dir: &PathBuf) {
     fs::write(
-        dir.join("releaser.toml"),
+        dir.join("bincast.toml"),
         r#"[package]
 name = "test-tool"
 binary = "test-tool"
@@ -246,7 +246,7 @@ fn test_generate_ci_is_valid() {
 fn test_generate_fails_with_invalid_config() {
     let dir = temp_project("generate-invalid");
     fs::write(
-        dir.join("releaser.toml"),
+        dir.join("bincast.toml"),
         r#"[package]
 name = "test"
 binary = "test"

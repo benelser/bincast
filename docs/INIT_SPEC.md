@@ -15,7 +15,7 @@ bincast init → detect → ask profile → ask channel config → preview → e
 - Read Cargo.toml (or workspace root → find binary crate)
 - Extract: name, version, binary, repository, license, description
 - Parse git remote for owner/repo
-- Check if releaser.toml already exists (offer to reconfigure)
+- Check if bincast.toml already exists (offer to reconfigure)
 - Check if gh CLI is available (needed for repo creation + secrets)
 
 Output:
@@ -58,7 +58,7 @@ Show a summary of everything that will happen:
 ```
   Ready to set up release infrastructure:
 
-    Write releaser.toml (N channels, M targets)
+    Write bincast.toml (N channels, M targets)
     Generate .github/workflows/release.yml
     Generate install.sh + install.ps1
     Generate homebrew/name.rb          ← only if homebrew enabled
@@ -76,7 +76,7 @@ Show a summary of everything that will happen:
 Sequential, with progress:
 
 ```
-  ✓ Wrote releaser.toml
+  ✓ Wrote bincast.toml
   ✓ Generated 6 files
   ✓ Created owner/homebrew-name (private)
   ✓ Created owner/scoop-name (private)
@@ -147,7 +147,7 @@ Errors suggest the fix (gh CLI pattern):
 
 ✗ npm scope must start with '@' — example: @my-org
 
-✗ releaser.toml already exists — delete it or run with --force
+✗ bincast.toml already exists — delete it or run with --force
 
 ✗ no git remote found — push your repo first: git remote add origin ...
 ```
@@ -161,5 +161,5 @@ Every path tested with expect scripts (AAA pattern):
 - Full scenario: init → generate → files on disk
 - Non-interactive with flags
 - Secret setup flow (mocked gh)
-- Existing releaser.toml (--force)
+- Existing bincast.toml (--force)
 - Missing gh CLI (graceful degradation)

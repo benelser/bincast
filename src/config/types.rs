@@ -1,7 +1,7 @@
 use crate::error::Error;
 use crate::toml_parser::Value;
 
-/// Root configuration parsed from releaser.toml.
+/// Root configuration parsed from bincast.toml.
 #[derive(Debug, Clone)]
 pub struct ReleaserConfig {
     pub package: PackageConfig,

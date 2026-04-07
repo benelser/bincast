@@ -13,7 +13,7 @@ send "\r"
 expect "Done!"
 expect eof
 
-if {![file exists "releaser.toml"]} { puts "FAIL: releaser.toml missing"; exit 1 }
+if {![file exists "bincast.toml"]} { puts "FAIL: bincast.toml missing"; exit 1 }
 
 # Step 2: Verify generated files exist (init now generates them automatically)
 set expected_files {

@@ -5,7 +5,7 @@ use crate::config::ReleaserConfig;
 
 /// Shared state flowing through the pipeline.
 pub struct Context {
-    /// The parsed releaser.toml config.
+    /// The parsed bincast.toml config.
     pub config: Option<ReleaserConfig>,
     /// The version being released.
     pub version: Option<String>,

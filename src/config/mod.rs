@@ -7,7 +7,7 @@ pub use types::*;
 use crate::error::Result;
 use crate::toml_parser;
 
-/// Load and parse a releaser.toml file.
+/// Load and parse a bincast.toml file.
 pub fn load(path: &std::path::Path) -> Result<ReleaserConfig> {
     let content = std::fs::read_to_string(path).map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
@@ -22,7 +22,7 @@ pub fn load(path: &std::path::Path) -> Result<ReleaserConfig> {
     parse(&content)
 }
 
-/// Parse a releaser.toml string into a ReleaserConfig.
+/// Parse a bincast.toml string into a ReleaserConfig.
 pub fn parse(input: &str) -> Result<ReleaserConfig> {
     let value = toml_parser::parse(input)?;
     ReleaserConfig::from_toml(&value)

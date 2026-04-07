@@ -49,7 +49,7 @@ fn setup_and_generate(config_toml: &str) -> (PathBuf, Vec<bincast::generate::Gen
     let dir = std::env::temp_dir().join(format!("releaser-test-{}-{}", std::process::id(), ts));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
-    fs::write(dir.join("releaser.toml"), config_toml).unwrap();
+    fs::write(dir.join("bincast.toml"), config_toml).unwrap();
 
     let config = bincast::config::parse(config_toml).unwrap();
     let files = bincast::generate::run(&config, &dir).unwrap();

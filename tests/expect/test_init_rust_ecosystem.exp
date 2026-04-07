@@ -14,7 +14,7 @@ send "\r"
 expect "Done!"
 expect eof
 
-set fp [open "releaser.toml" r]
+set fp [open "bincast.toml" r]
 set content [read $fp]
 close $fp
 

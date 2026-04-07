@@ -23,10 +23,10 @@ pub fn run(project_dir: &Path) -> Result<()> {
     }
 
     // Check for existing config
-    let config_path = project_dir.join("releaser.toml");
+    let config_path = project_dir.join("bincast.toml");
     if config_path.exists() {
         return Err(Error::Config(
-            "releaser.toml already exists — delete it first or edit it directly".into(),
+            "bincast.toml already exists — delete it first or edit it directly".into(),
         ));
     }
 
@@ -86,9 +86,9 @@ pub fn run(project_dir: &Path) -> Result<()> {
     eprintln!();
 
     // Stage 6: EXECUTE
-    // Write releaser.toml
+    // Write bincast.toml
     std::fs::write(&config_path, &toml_str)?;
-    eprintln!("  ✓ Wrote releaser.toml");
+    eprintln!("  ✓ Wrote bincast.toml");
 
     // Generate files
     let output_dir = project_dir;

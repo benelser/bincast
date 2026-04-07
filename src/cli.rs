@@ -69,7 +69,7 @@ pub fn parse_from(args: &[String]) -> Result<Command, String> {
         "--version" | "-V" | "version" => Ok(Command::Version),
         "--help" | "-h" | "help" => Ok(Command::Help),
         other => Err(format!(
-            "unknown command: '{other}'\n\nUsage: bincast <command>\n\nCommands:\n  init       Initialize releaser.toml from Cargo.toml\n  generate   Generate CI workflows, install scripts, and package manifests\n  check      Validate config and check name availability\n  release    Tag a version, push, and watch CI\n  publish    Build and publish locally to all channels\n  help       Show this help message"
+            "unknown command: '{other}'\n\nUsage: bincast <command>\n\nCommands:\n  init       Initialize bincast.toml from Cargo.toml\n  generate   Generate CI workflows, install scripts, and package manifests\n  check      Validate config and check name availability\n  release    Tag a version, push, and watch CI\n  publish    Build and publish locally to all channels\n  help       Show this help message"
         )),
     }
 }
@@ -89,14 +89,14 @@ USAGE:
     bincast <COMMAND>
 
 COMMANDS:
-    init       Initialize releaser.toml from Cargo.toml
+    init       Initialize bincast.toml from Cargo.toml
     generate   Generate CI workflows, install scripts, and package manifests
     check      Validate config and check name availability
     release    Tag a version, push, and watch CI
     publish    Build and publish locally to all channels
 
 OPTIONS:
-    --config <PATH>    Path to releaser.toml (default: ./releaser.toml)
+    --config <PATH>    Path to bincast.toml (default: ./bincast.toml)
     --dry-run          Release/publish: simulate without side effects
     -V, --version      Print version
     -h, --help         Print help",

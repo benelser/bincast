@@ -280,7 +280,7 @@ pub fn plan_actions(config: &ReleaserConfig, det: &Detection) -> Vec<String> {
     let channels = count_channels(config);
     let targets = config.targets.platforms.len();
 
-    actions.push(format!("Write releaser.toml ({channels} channels, {targets} targets)"));
+    actions.push(format!("Write bincast.toml ({channels} channels, {targets} targets)"));
     actions.push("Generate .github/workflows/release.yml".into());
 
     if config.distribute.install_script.as_ref().is_some_and(|s| s.enabled) {
@@ -398,7 +398,7 @@ pub fn git_commit(project_dir: &Path) {
     }
 
     let _ = Command::new("git")
-        .args(["add", "releaser.toml", ".github/", "install.sh", "install.ps1", "binstall.toml", "homebrew/", "scoop/"])
+        .args(["add", "bincast.toml", ".github/", "install.sh", "install.ps1", "binstall.toml", "homebrew/", "scoop/"])
         .current_dir(project_dir)
         .output();
 

@@ -80,7 +80,7 @@ impl Pipe for ConfigValidationPipe {
     fn dry_run(&self, _ctx: &Context) -> DryRunEntry {
         DryRunEntry {
             pipe: "config-validation".into(),
-            description: "would validate releaser.toml".into(),
+            description: "would validate bincast.toml".into(),
         }
     }
 }

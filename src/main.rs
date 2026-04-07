@@ -15,11 +15,11 @@ fn main() {
     let result = match cmd {
         Command::Init => run_init(),
         Command::Generate { config } => {
-            let config_path = config.as_deref().unwrap_or("releaser.toml");
+            let config_path = config.as_deref().unwrap_or("bincast.toml");
             run_generate(config_path)
         }
         Command::Check { config } => {
-            let config_path = config.as_deref().unwrap_or("releaser.toml");
+            let config_path = config.as_deref().unwrap_or("bincast.toml");
             run_check(config_path)
         }
         Command::Publish {
@@ -27,7 +27,7 @@ fn main() {
             dry_run,
             config,
         } => {
-            let config_path = config.as_deref().unwrap_or("releaser.toml");
+            let config_path = config.as_deref().unwrap_or("bincast.toml");
             run_publish(config_path, &version, dry_run)
         }
         Command::Release { version, dry_run } => {
