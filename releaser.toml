@@ -1,0 +1,28 @@
+[package]
+name = "bincast"
+binary = "bincast"
+description = "Ship your Rust binary to every package manager with one command"
+repository = "https://github.com/benelser/bincast"
+license = "MIT"
+
+[targets]
+platforms = [
+  "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
+  "aarch64-unknown-linux-gnu",
+  "x86_64-unknown-linux-gnu",
+  "x86_64-unknown-linux-musl",
+  "x86_64-pc-windows-msvc",
+]
+
+[distribute.github]
+release = true
+
+[distribute.homebrew]
+tap = "benelser/homebrew-bincast"
+
+[distribute.cargo]
+crate_name = "bincast"
+
+[distribute.install_script]
+enabled = true
