@@ -18,8 +18,5 @@ platforms = [
 [distribute.github]
 release = true
 
-[distribute.cargo]
-crate_name = "bincast"
-
 [distribute.install_script]
 enabled = true
