@@ -213,9 +213,12 @@ impl Pipe for CratesPublishPipe {
         let cargo_config = config.distribute.cargo.as_ref().ok_or("cargo not configured")?;
 
         eprintln!("  publishing to crates.io as '{}'...", cargo_config.crate_name);
-        let output = std::process::Command::new("cargo")
-            .args(["publish", "--no-verify"])
-            .current_dir(&ctx.work_dir)
+        let mut cmd = std::process::Command::new("cargo");
+        cmd.args(["publish", "--no-verify"]);
+        if let Some(pkg) = &config.package.workspace_package {
+            cmd.args(["-p", pkg]);
+        }
+        let output = cmd.current_dir(&ctx.work_dir)
             .output()
             .map_err(|e| format!("cargo publish failed: {e}"))?;
 

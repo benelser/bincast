@@ -64,6 +64,15 @@ pub fn render(gctx: &GenerateContext) -> Result<String, String> {
     ctx.set("owner", gctx.owner.as_str());
     ctx.set("repo", gctx.repo.as_str());
 
+    // Workspace support: add -p flag if this is a workspace member
+    let has_workspace_package = gctx.config.package.workspace_package.is_some();
+    ctx.set("has_workspace_package", has_workspace_package);
+    if let Some(pkg) = &gctx.config.package.workspace_package {
+        ctx.set("cargo_package_flag", format!("-p {pkg}"));
+    } else {
+        ctx.set("cargo_package_flag", "");
+    }
+
     // Pinned actions
     ctx.set("action_checkout", pinned("actions/checkout"));
     ctx.set("action_upload_artifact", pinned("actions/upload-artifact"));
@@ -166,7 +175,7 @@ jobs:
           esac
 
       - name: Build binary
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }} {{ cargo_package_flag }}
 
       - name: Create archive
         shell: bash
@@ -315,7 +324,7 @@ jobs:
         run: rustup toolchain install stable --profile minimal
 
       - name: Publish to crates.io
-        run: cargo publish
+        run: cargo publish {{ cargo_package_flag }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 {% endif %}{% if has_homebrew %}

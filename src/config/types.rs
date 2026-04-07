@@ -18,6 +18,8 @@ pub struct PackageConfig {
     pub license: Option<String>,
     pub homepage: Option<String>,
     pub readme: Option<String>,
+    /// For workspace projects: the -p flag value for cargo build/publish.
+    pub workspace_package: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -228,6 +230,7 @@ impl PackageConfig {
             license: val.get_str("license").map(|s| s.to_string()),
             homepage: val.get_str("homepage").map(|s| s.to_string()),
             readme: val.get_str("readme").map(|s| s.to_string()),
+            workspace_package: val.get_str("workspace_package").map(|s| s.to_string()),
         })
     }
 }

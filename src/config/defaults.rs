@@ -15,6 +15,7 @@ pub fn from_cargo(cargo: &CargoMetadata) -> ReleaserConfig {
             license: cargo.license.clone(),
             homepage: cargo.homepage.clone(),
             readme: cargo.readme.clone(),
+            workspace_package: cargo.package_flag.clone(),
         },
         targets: TargetsConfig {
             platforms: default_platforms(),
@@ -53,6 +54,8 @@ mod tests {
             homepage: None,
             readme: None,
             binary: None,
+            package_flag: None,
+            is_workspace: false,
         };
 
         let config = from_cargo(&cargo);
@@ -75,6 +78,8 @@ mod tests {
             homepage: None,
             readme: None,
             binary: Some("my-tool".into()),
+            package_flag: None,
+            is_workspace: false,
         };
 
         let config = from_cargo(&cargo);

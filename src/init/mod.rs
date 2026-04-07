@@ -27,14 +27,23 @@ pub fn run(project_dir: &Path) -> Result<String> {
         ));
     }
 
-    let meta = cargo::read(&cargo_path)?;
+    let project = cargo::read_project(project_dir)?;
+
+    let meta = match &project {
+        cargo::ProjectKind::SingleCrate(meta) => meta.clone(),
+        cargo::ProjectKind::Workspace { root_meta, members } => {
+            cargo::resolve_workspace_binary(project_dir, root_meta, members)?
+        }
+    };
+
     let mut config = defaults::from_cargo(&meta);
 
     // Always enabled
     config.distribute.github = Some(crate::config::GitHubConfig { release: true });
 
     if is_interactive() {
-        wizard(&mut config, &meta)?;
+        let is_ws = matches!(&project, cargo::ProjectKind::Workspace { .. });
+        wizard(&mut config, &meta, is_ws)?;
     } else {
         // Non-interactive: minimal profile
         config.distribute.install_script = Some(crate::config::InstallScriptConfig { enabled: true });
@@ -44,7 +53,7 @@ pub fn run(project_dir: &Path) -> Result<String> {
     Ok(toml)
 }
 
-fn wizard(config: &mut crate::config::ReleaserConfig, meta: &CargoMetadata) -> Result<()> {
+fn wizard(config: &mut crate::config::ReleaserConfig, meta: &CargoMetadata, is_workspace: bool) -> Result<()> {
     let stdin = io::stdin();
     let mut r = stdin.lock();
     let name = &meta.name;
@@ -56,7 +65,14 @@ fn wizard(config: &mut crate::config::ReleaserConfig, meta: &CargoMetadata) -> R
     eprintln!();
     eprintln!("  bincast v{} — Ship your Rust binary everywhere", env!("CARGO_PKG_VERSION"));
     eprintln!();
-    eprintln!("  Detected: {name} v{} (from Cargo.toml)", meta.version);
+    if is_workspace {
+        eprintln!("  Detected workspace, using binary: {name}");
+        if let Some(pkg) = &meta.package_flag {
+            eprintln!("  Package: {pkg} (cargo build -p {pkg})");
+        }
+    } else {
+        eprintln!("  Detected: {name} v{} (from Cargo.toml)", meta.version);
+    }
     eprintln!("  Repository: {}", config.package.repository);
     eprintln!();
 
@@ -361,6 +377,9 @@ pub fn serialize_config(config: &crate::config::ReleaserConfig) -> String {
     if let Some(homepage) = &config.package.homepage {
         out.push_str(&format!("homepage = \"{homepage}\"\n"));
     }
+    if let Some(ws_pkg) = &config.package.workspace_package {
+        out.push_str(&format!("workspace_package = \"{ws_pkg}\"\n"));
+    }
 
     out.push_str("\n[targets]\nplatforms = [\n");
     for target in &config.targets.platforms {
@@ -494,6 +513,7 @@ repository = "https://github.com/user/my-tool"
                 license: Some("MIT".into()),
                 homepage: Some("https://durable.dev".into()),
                 readme: None,
+                workspace_package: None,
             },
             targets: TargetsConfig {
                 platforms: vec![

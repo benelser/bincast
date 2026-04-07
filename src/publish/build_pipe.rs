@@ -47,6 +47,10 @@ impl Pipe for BuildPipe {
 
         let mut command = std::process::Command::new(&cmd.program);
         command.args(&cmd.args);
+        // Add -p flag for workspace builds
+        if let Some(pkg) = &config.package.workspace_package {
+            command.args(["-p", pkg]);
+        }
         for (k, v) in &cmd.env {
             command.env(k, v);
         }
