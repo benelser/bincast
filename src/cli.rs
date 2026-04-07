@@ -17,7 +17,6 @@ pub enum Command {
         config: Option<String>,
     },
     Release {
-        version: Option<String>,
         dry_run: bool,
     },
     Bump {
@@ -68,12 +67,8 @@ pub fn parse_from(args: &[String]) -> Result<Command, String> {
             Ok(Command::Bump { bump })
         }
         "release" => {
-            let version = args
-                .get(1)
-                .filter(|a| !a.starts_with('-'))
-                .cloned();
             let dry_run = args.iter().any(|a| a == "--dry-run");
-            Ok(Command::Release { version, dry_run })
+            Ok(Command::Release { dry_run })
         }
         "--version" | "-V" | "version" => Ok(Command::Version),
         "--help" | "-h" | "help" => Ok(Command::Help),

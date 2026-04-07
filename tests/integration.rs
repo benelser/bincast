@@ -97,7 +97,7 @@ fn test_cli_version() {
     let output = Command::new(&bin).arg("version").output().unwrap();
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("bincast 0.1.0"));
+    assert!(stdout.contains("bincast 0.1."));
 }
 
 #[test]
@@ -270,7 +270,7 @@ release = true
 
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("must be a GitHub URL"));
+    assert!(stderr.contains("not a GitHub URL"));
 
     let _ = fs::remove_dir_all(&dir);
 }

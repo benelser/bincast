@@ -30,8 +30,8 @@ fn main() {
             let config_path = config.as_deref().unwrap_or("bincast.toml");
             run_publish(config_path, &version, dry_run)
         }
-        Command::Release { version, dry_run } => {
-            bincast::release::run(version.as_deref(), dry_run)
+        Command::Release { dry_run } => {
+            bincast::release::run(dry_run)
         }
         Command::Bump { bump } => {
             bincast::version::run(&bump)
