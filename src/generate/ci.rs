@@ -146,6 +146,25 @@ jobs:
           rustup toolchain install stable --profile minimal
           rustup target add ${{ matrix.target }}
 
+      - name: Install cross-compilation tools
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update -q
+          case "${{ matrix.target }}" in
+            aarch64-unknown-linux-gnu)
+              sudo apt-get install -yq gcc-aarch64-linux-gnu
+              echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+              ;;
+            aarch64-unknown-linux-musl)
+              sudo apt-get install -yq gcc-aarch64-linux-gnu musl-tools
+              echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+              ;;
+            x86_64-unknown-linux-musl)
+              sudo apt-get install -yq musl-tools
+              ;;
+          esac
+
       - name: Build binary
         run: cargo build --release --target ${{ matrix.target }}
 
