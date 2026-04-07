@@ -17,7 +17,11 @@ pub fn check_name(registry: Registry, name: &str) -> Result<bool, String> {
     let base = std::env::var("RELEASER_REGISTRY_BASE_URL").unwrap_or(base);
     let url = format!("{base}{path}");
 
-    let resp = client::request(&client::Request::get(&url), 1)?;
+    let resp = client::request(
+        &client::Request::get(&url)
+            .with_header("User-Agent", format!("bincast/{}", env!("CARGO_PKG_VERSION"))),
+        1,
+    )?;
 
     match resp.status {
         404 => Ok(true),

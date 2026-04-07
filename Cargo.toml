@@ -7,5 +7,7 @@ license = "MIT"
 repository = "https://github.com/benelser/bincast"
 
 [dependencies]
+rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "ring"] }
+webpki-roots = "1"
 
 [dev-dependencies]

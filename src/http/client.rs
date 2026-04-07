@@ -1,14 +1,14 @@
-//! Unified HTTP client — zero dependencies.
+//! Unified HTTP client.
 //!
-//! Uses std::net::TcpStream for plain HTTP (tests, mock servers).
-//! Uses system curl for HTTPS (production) — bundled on macOS, Linux, Windows 10+.
+//! Uses std::net::TcpStream for plain HTTP (tests, digital twins).
+//! Uses rustls for HTTPS (production APIs — GitHub, PyPI, npm, crates.io).
 //!
-//! Single API for both: `HttpClient::request()`.
+//! No curl. No shell-outs. No external binaries.
 
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::path::Path;
-use std::process::Command;
+use std::sync::Arc;
 use std::time::Duration;
 
 /// HTTP method.
@@ -74,8 +74,8 @@ pub fn request(req: &Request, retries: u32) -> Result<Response, String> {
             // Plain HTTP — use TcpStream directly (for tests/mocks)
             request_tcp(req)
         } else if req.url.starts_with("https://") {
-            // HTTPS — use system curl
-            request_curl(req)
+            // HTTPS — native TLS via rustls
+            request_tls(req)
         } else {
             Err(format!("unsupported URL scheme: {}", req.url))
         };
@@ -160,79 +160,126 @@ fn request_tcp(req: &Request) -> Result<Response, String> {
     parse_http_response(&response_str)
 }
 
-/// HTTPS via system curl.
-fn request_curl(req: &Request) -> Result<Response, String> {
-    let mut args: Vec<String> = vec![
-        "-s".into(),
-        "-w".into(),
-        "\n__BINCAST_STATUS__%{http_code}".into(),
-        "--max-time".into(),
-        "30".into(),
-    ];
+/// HTTPS via rustls — native TLS, no external binaries.
+fn request_tls(req: &Request) -> Result<Response, String> {
+    let url = req.url.strip_prefix("https://").unwrap_or(req.url);
+    let (host_port, path) = url.split_once('/').unwrap_or((url, ""));
+    let path = format!("/{path}");
 
-    match req.method {
-        Method::Get => {}
-        Method::Post => { args.push("-X".into()); args.push("POST".into()); }
-        Method::Patch => { args.push("-X".into()); args.push("PATCH".into()); }
-        Method::Put => { args.push("-X".into()); args.push("PUT".into()); }
-    }
+    // Parse host and port
+    let (host, port) = if host_port.contains(':') {
+        let (h, p) = host_port.split_once(':').unwrap();
+        (h, p.parse::<u16>().unwrap_or(443))
+    } else {
+        (host_port, 443)
+    };
 
+    // Set up TLS
+    let root_store = rustls::RootCertStore::from_iter(
+        webpki_roots::TLS_SERVER_ROOTS.iter().cloned()
+    );
+    let config = rustls::ClientConfig::builder()
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+
+    let server_name = rustls::pki_types::ServerName::try_from(host.to_string())
+        .map_err(|e| format!("invalid hostname '{host}': {e}"))?;
+
+    let mut conn = rustls::ClientConnection::new(Arc::new(config), server_name)
+        .map_err(|e| format!("TLS setup failed: {e}"))?;
+
+    let mut sock = TcpStream::connect(format!("{host}:{port}"))
+        .map_err(|e| format!("connect to {host}:{port} failed: {e}"))?;
+    sock.set_read_timeout(Some(Duration::from_secs(30))).ok();
+
+    let mut tls = rustls::Stream::new(&mut conn, &mut sock);
+
+    // Build request
+    let method = match req.method {
+        Method::Get => "GET",
+        Method::Post => "POST",
+        Method::Patch => "PATCH",
+        Method::Put => "PUT",
+    };
+
+    let body_bytes = match &req.body {
+        Body::None => Vec::new(),
+        Body::Json(s) => s.as_bytes().to_vec(),
+        Body::Bytes(b) => b.to_vec(),
+        Body::File(p) => std::fs::read(p).map_err(|e| format!("read file: {e}"))?,
+        Body::Multipart(fields) => build_multipart(fields)?,
+    };
+
+    let mut request = format!("{method} {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n");
     for (k, v) in &req.headers {
-        args.push("-H".into());
-        args.push(format!("{k}: {v}"));
+        request.push_str(&format!("{k}: {v}\r\n"));
     }
 
-    match &req.body {
-        Body::None => {}
-        Body::Json(s) => {
-            args.push("-d".into());
-            args.push(s.to_string());
-        }
-        Body::Bytes(b) => {
-            args.push("--data-binary".into());
-            args.push(String::from_utf8_lossy(b).into_owned());
-        }
-        Body::File(p) => {
-            args.push("-T".into());
-            args.push(p.to_str().ok_or("non-utf8 path")?.into());
-        }
-        Body::Multipart(fields) => {
-            for field in fields {
-                match &field.value {
-                    FormValue::Text(t) => {
-                        args.push("-F".into());
-                        args.push(format!("{}={}", field.name, t));
-                    }
-                    FormValue::File(p) => {
-                        args.push("-F".into());
-                        args.push(format!("{}=@{}", field.name, p.display()));
-                    }
+    // For multipart, add the boundary content-type
+    if matches!(&req.body, Body::Multipart(_)) {
+        request.push_str("Content-Type: multipart/form-data; boundary=----bincast\r\n");
+    }
+
+    if !body_bytes.is_empty() {
+        request.push_str(&format!("Content-Length: {}\r\n", body_bytes.len()));
+    }
+    request.push_str("\r\n");
+
+    let mut full_request = request.into_bytes();
+    full_request.extend_from_slice(&body_bytes);
+
+    tls.write_all(&full_request).map_err(|e| format!("TLS write: {e}"))?;
+
+    // Read response
+    let mut response = Vec::new();
+    let mut buf = [0u8; 8192];
+    loop {
+        match tls.read(&mut buf) {
+            Ok(0) => break,
+            Ok(n) => response.extend_from_slice(&buf[..n]),
+            Err(ref e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(e) => {
+                if response.is_empty() {
+                    return Err(format!("TLS read: {e}"));
                 }
+                break;
             }
         }
     }
 
-    args.push(req.url.into());
+    let response_str = String::from_utf8_lossy(&response);
+    parse_http_response(&response_str)
+}
 
-    let output = Command::new("curl")
-        .args(&args)
-        .output()
-        .map_err(|e| format!("failed to run curl: {e}"))?;
+/// Build a multipart/form-data body.
+fn build_multipart(fields: &[FormField]) -> Result<Vec<u8>, String> {
+    let boundary = "----bincast";
+    let mut body = Vec::new();
 
-    let raw = String::from_utf8_lossy(&output.stdout);
-
-    // Parse status from our marker
-    if let Some(marker_pos) = raw.rfind("__BINCAST_STATUS__") {
-        let body = &raw[..marker_pos];
-        let status_str = &raw[marker_pos + "__BINCAST_STATUS__".len()..];
-        let status = status_str.trim().parse::<u16>().unwrap_or(0);
-        Ok(Response {
-            status,
-            body: body.to_string(),
-        })
-    } else {
-        Err(format!("curl returned unexpected output: {raw}"))
+    for field in fields {
+        body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
+        match &field.value {
+            FormValue::Text(t) => {
+                body.extend_from_slice(
+                    format!("Content-Disposition: form-data; name=\"{}\"\r\n\r\n{}\r\n", field.name, t).as_bytes()
+                );
+            }
+            FormValue::File(p) => {
+                let filename = p.file_name()
+                    .and_then(|f| f.to_str())
+                    .unwrap_or("file");
+                body.extend_from_slice(
+                    format!("Content-Disposition: form-data; name=\"{}\"; filename=\"{}\"\r\nContent-Type: application/octet-stream\r\n\r\n", field.name, filename).as_bytes()
+                );
+                let file_data = std::fs::read(p).map_err(|e| format!("read {}: {e}", p.display()))?;
+                body.extend_from_slice(&file_data);
+                body.extend_from_slice(b"\r\n");
+            }
+        }
     }
+    body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
+
+    Ok(body)
 }
 
 fn parse_http_response(raw: &str) -> Result<Response, String> {
