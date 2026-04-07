@@ -18,23 +18,33 @@ metadata:
 Before using any bincast skill, verify the binary is available:
 
 ```bash
+# macOS/Linux
 which bincast && bincast version
+
+# Windows (PowerShell)
+Get-Command bincast -ErrorAction SilentlyContinue; bincast version
 ```
 
-If not installed, install via ONE of these methods:
+If not found, install using the method appropriate for the user's platform:
 
+**macOS:**
 ```bash
-# macOS (recommended)
 brew install benelser/bincast/bincast
+```
 
-# Any platform with Rust
-cargo install bincast
-
-# macOS/Linux without Rust
-curl -sSL https://raw.githubusercontent.com/benelser/bincast/main/install.sh | sh
-
-# Windows
+**Windows:**
+```powershell
 irm https://raw.githubusercontent.com/benelser/bincast/main/install.ps1 | iex
+```
+
+**Linux:**
+```bash
+curl -sSL https://raw.githubusercontent.com/benelser/bincast/main/install.sh | sh
+```
+
+**Any platform with Rust toolchain:**
+```bash
+cargo install bincast
 ```
 
 > [!IMPORTANT]
