@@ -11,12 +11,12 @@ struct PinnedAction {
 const ACTIONS: &[PinnedAction] = &[
     PinnedAction {
         uses: "actions/checkout",
-        sha: "11bd71901bbe5b1630ceea73d27597364c9af683",
+        sha: "34e114876b0b11c390a56381ad16ebd13914f8d5",
         comment: "v4",
     },
     PinnedAction {
         uses: "actions/upload-artifact",
-        sha: "ea165f8d65b6db9a6b7a0b7571b6fd9e8281941c",
+        sha: "ea165f8d65b6e75b540449e92b4886f43607fa02",
         comment: "v4",
     },
     PinnedAction {
@@ -26,22 +26,22 @@ const ACTIONS: &[PinnedAction] = &[
     },
     PinnedAction {
         uses: "actions/attest-build-provenance",
-        sha: "c074443f1aee8d4aeeae555aebba3282517141b2",
+        sha: "b3e506e8c389afc651c5bacf2b8f2a1ea0557215",
         comment: "v4",
     },
     PinnedAction {
         uses: "softprops/action-gh-release",
-        sha: "da05d552573ad5aba039eaac05058a918a7bf631",
+        sha: "153bb8e04406b158c6c84fc1615b65b24149a1fe",
         comment: "v2",
     },
     PinnedAction {
         uses: "PyO3/maturin-action",
-        sha: "aef21716c8bf28af6feabf9e56b5659dbb48f8fa",
+        sha: "db323e2cf5679b7feb8bcb561a36b27a0bc19e79",
         comment: "v1",
     },
     PinnedAction {
         uses: "actions/setup-node",
-        sha: "1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a",
+        sha: "49933ea5288caeca8642d1e84afbd3f7d6820020",
         comment: "v4",
     },
 ];

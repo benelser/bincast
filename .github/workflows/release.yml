@@ -33,7 +33,7 @@ jobs:
             runner: windows-latest
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
       - name: Install Rust toolchain
         run: |
@@ -84,7 +84,7 @@ jobs:
         run: |
           target/${{ matrix.target }}/release/bincast --help
 
-      - uses: actions/upload-artifact@ea165f8d65b6db9a6b7a0b7571b6fd9e8281941c  # v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: archive-${{ matrix.target }}
           path: |
@@ -95,7 +95,7 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
         with:
@@ -103,11 +103,11 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2  # v4
+      - uses: actions/attest-build-provenance@b3e506e8c389afc651c5bacf2b8f2a1ea0557215  # v4
         with:
           subject-path: "artifacts/*"
 
-      - uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631  # v2
+      - uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe  # v2
         with:
           files: artifacts/*
           generate_release_notes: true
