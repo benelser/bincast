@@ -103,15 +103,15 @@ pub enum Profile {
 }
 
 pub fn ask_profile() -> Result<Profile> {
-    eprintln!("  Distribution profile:");
+    eprintln!("  How should people install your tool?");
     let choice = prompts::select(
         "  Choose [1-4]",
         3,
         &[
-            ("Maximum Reach", "pip, npm, brew, scoop, cargo, curl, irm"),
-            ("Rust Ecosystem", "cargo, binstall, curl, irm"),
-            ("Minimal", "GitHub Releases + install scripts"),
-            ("Custom", "choose individually"),
+            ("Every package manager", "pip install, npm install, brew, scoop, cargo, curl, irm"),
+            ("Rust developers", "cargo install, cargo binstall, curl, irm"),
+            ("GitHub Releases only", "download from releases page + install scripts"),
+            ("Pick channels", "choose exactly which package managers"),
         ],
     )?;
 

@@ -1,9 +1,18 @@
-/// Minimal CLI argument parser — no dependencies.
-/// Supports: bincast <subcommand> [options]
+// Minimal CLI argument parser — no dependencies.
+
+/// Non-interactive init options passed via flags.
+#[derive(Debug, Default)]
+pub struct InitFlags {
+    pub channels: Option<String>,    // comma-separated: github,pypi,npm,homebrew,cargo,install-scripts
+    pub npm_scope: Option<String>,
+    pub tap: Option<String>,
+    pub bucket: Option<String>,
+    pub yes: bool,                   // skip confirmation
+}
 
 #[derive(Debug)]
 pub enum Command {
-    Init,
+    Init(InitFlags),
     Generate {
         /// Override config file path (default: bincast.toml)
         config: Option<String>,
@@ -38,7 +47,16 @@ pub fn parse_from(args: &[String]) -> Result<Command, String> {
     }
 
     match args[0].as_str() {
-        "init" => Ok(Command::Init),
+        "init" => {
+            let flags = InitFlags {
+                channels: extract_option(args, "--channels"),
+                npm_scope: extract_option(args, "--npm-scope"),
+                tap: extract_option(args, "--tap"),
+                bucket: extract_option(args, "--bucket"),
+                yes: args.iter().any(|a| a == "--yes" || a == "-y"),
+            };
+            Ok(Command::Init(flags))
+        }
         "generate" => {
             let config = extract_option(args, "--config");
             Ok(Command::Generate { config })
@@ -124,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_init() {
-        assert!(matches!(parse_from(&args("init")).unwrap(), Command::Init));
+        assert!(matches!(parse_from(&args("init")).unwrap(), Command::Init(_)));
     }
 
     #[test]

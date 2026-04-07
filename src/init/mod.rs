@@ -1,9 +1,11 @@
 //! `bincast init` — the full onboarding orchestrator.
 //!
-//! Detect → Profile → Configure → Preview → Execute → Secrets → Done
+//! Two modes:
+//! - Interactive: wizard with profile selection (human at terminal)
+//! - Non-interactive: --channels flag (agent-driven or CI)
 //!
 //! Does everything programmatically. Only pauses for human input when
-//! we genuinely need it (profile choice, npm scope, token paste).
+//! we genuinely need it.
 
 mod prompts;
 mod serialize;
@@ -11,10 +13,11 @@ mod stages;
 
 use std::path::Path;
 
+use crate::cli::InitFlags;
 use crate::error::{Error, Result};
 
-/// Run the full init orchestrator.
-pub fn run(project_dir: &Path) -> Result<()> {
+/// Entry point — dispatches to interactive or flag-driven flow.
+pub fn run_with_flags(project_dir: &Path, flags: InitFlags) -> Result<()> {
     let cargo_path = project_dir.join("Cargo.toml");
     if !cargo_path.exists() {
         return Err(Error::Config(
@@ -22,7 +25,6 @@ pub fn run(project_dir: &Path) -> Result<()> {
         ));
     }
 
-    // Check for existing config
     let config_path = project_dir.join("bincast.toml");
     if config_path.exists() {
         return Err(Error::Config(
@@ -33,13 +35,7 @@ pub fn run(project_dir: &Path) -> Result<()> {
     // Stage 1: DETECT
     let detection = stages::detect(project_dir)?;
 
-    if !prompts::can_prompt() {
-        return Err(Error::Config(
-            "must run interactively or provide --profile flag when stdin is not a TTY".into(),
-        ));
-    }
-
-    // Display detection results
+    // Display detection
     eprintln!();
     eprintln!("  bincast v{} — Ship your Rust binary everywhere", env!("CARGO_PKG_VERSION"));
     eprintln!();
@@ -59,13 +55,25 @@ pub fn run(project_dir: &Path) -> Result<()> {
     eprintln!("  Repository: {}", detection.repository);
     eprintln!();
 
-    // Stage 2: PROFILE
-    let profile = stages::ask_profile()?;
+    // Stage 2+3: CHANNEL SELECTION
+    let channel_config = if flags.channels.is_some() {
+        // Non-interactive: channels from flags
+        channels_from_flags(&flags, &detection)?
+    } else if prompts::can_prompt() {
+        // Interactive: wizard
+        let profile = stages::ask_profile()?;
+        stages::configure_channels(profile, &detection)?
+    } else {
+        return Err(Error::Config(
+            "must run interactively or provide --channels flag\n\n  \
+             Examples:\n    \
+             bincast init --channels github,cargo,install-scripts\n    \
+             bincast init --channels github,pypi,homebrew --npm-scope @myorg\n    \
+             bincast init --channels github,pypi,npm,homebrew,scoop,cargo,install-scripts --npm-scope @myorg --yes".into(),
+        ));
+    };
 
-    // Stage 3: CONFIGURE (channel-specific inputs)
-    let channel_config = stages::configure_channels(profile, &detection)?;
-
-    // Stage 4: Build the config
+    // Stage 4: Build config
     let config = stages::build_config(&detection, &channel_config);
     let toml_str = serialize::serialize_config(&config);
 
@@ -79,24 +87,29 @@ pub fn run(project_dir: &Path) -> Result<()> {
     }
     eprintln!();
 
-    if !prompts::confirm("  Execute", true)? {
-        eprintln!("  Cancelled.");
-        return Ok(());
+    if !flags.yes {
+        if prompts::can_prompt() {
+            if !prompts::confirm("  Execute", true)? {
+                eprintln!("  Cancelled.");
+                return Ok(());
+            }
+        } else {
+            return Err(Error::Config(
+                "use --yes to confirm non-interactively".into(),
+            ));
+        }
     }
     eprintln!();
 
     // Stage 6: EXECUTE
-    // Write bincast.toml
     std::fs::write(&config_path, &toml_str)?;
     eprintln!("  ✓ Wrote bincast.toml");
 
-    // Generate files
     let output_dir = project_dir;
     let files = crate::generate::run(&config, output_dir)
         .map_err(|e| Error::Config(format!("generate failed: {e}")))?;
     eprintln!("  ✓ Generated {} files", files.len());
 
-    // Create tap/bucket repos via gh
     if let Some(tap) = &channel_config.homebrew_tap {
         stages::create_repo_if_needed(tap, &detection.gh_available);
     }
@@ -104,10 +117,7 @@ pub fn run(project_dir: &Path) -> Result<()> {
         stages::create_repo_if_needed(bucket, &detection.gh_available);
     }
 
-    // Check name availability (best effort, don't fail)
     stages::check_names(&config);
-
-    // Git commit
     stages::git_commit(project_dir);
 
     // Stage 7: SECRETS
@@ -118,10 +128,49 @@ pub fn run(project_dir: &Path) -> Result<()> {
     eprintln!();
     eprintln!("  Done! Release with:");
     eprintln!();
+    eprintln!("    bincast version patch");
     eprintln!("    bincast release");
     eprintln!();
 
     Ok(())
+}
+
+/// Build channel config from CLI flags.
+fn channels_from_flags(flags: &InitFlags, det: &stages::Detection) -> Result<stages::ChannelConfig> {
+    let channels_str = flags.channels.as_deref().unwrap_or("github,install-scripts");
+    let channels: Vec<&str> = channels_str.split(',').map(|s| s.trim()).collect();
+
+    let owner = &det.owner;
+    let name = &det.name;
+
+    let npm_scope = if channels.contains(&"npm") {
+        Some(flags.npm_scope.clone().ok_or_else(|| {
+            Error::Config("--npm-scope is required when npm channel is enabled\n\n  Example: bincast init --channels github,npm --npm-scope @myorg".into())
+        })?)
+    } else {
+        None
+    };
+
+    let homebrew_tap = if channels.contains(&"homebrew") || channels.contains(&"brew") {
+        Some(flags.tap.clone().unwrap_or_else(|| format!("{owner}/homebrew-{name}")))
+    } else {
+        None
+    };
+
+    let scoop_bucket = if channels.contains(&"scoop") {
+        Some(flags.bucket.clone().unwrap_or_else(|| format!("{owner}/scoop-{name}")))
+    } else {
+        None
+    };
+
+    Ok(stages::ChannelConfig {
+        install_scripts: channels.contains(&"install-scripts") || channels.contains(&"curl"),
+        pypi_name: if channels.contains(&"pypi") || channels.contains(&"pip") { Some(name.clone()) } else { None },
+        npm_scope,
+        homebrew_tap,
+        scoop_bucket,
+        cargo_crate: if channels.contains(&"cargo") { Some(name.clone()) } else { None },
+    })
 }
 
 // Re-export serialize for tests

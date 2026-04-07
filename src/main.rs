@@ -13,7 +13,7 @@ fn main() {
     };
 
     let result = match cmd {
-        Command::Init => run_init(),
+        Command::Init(flags) => bincast::init::run_with_flags(std::path::Path::new("."), flags),
         Command::Generate { config } => {
             let config_path = config.as_deref().unwrap_or("bincast.toml");
             run_generate(config_path)
@@ -50,10 +50,6 @@ fn main() {
         eprintln!("error: {e}");
         process::exit(1);
     }
-}
-
-fn run_init() -> Result<(), bincast::error::Error> {
-    bincast::init::run(Path::new("."))
 }
 
 fn run_generate(config_path: &str) -> Result<(), bincast::error::Error> {
