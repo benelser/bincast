@@ -88,7 +88,8 @@ pub fn render(gctx: &GenerateContext) -> Result<String, String> {
     ctx.set("has_cargo", gctx.config.distribute.cargo.is_some());
     ctx.set("has_homebrew", gctx.config.distribute.homebrew.is_some());
     ctx.set("has_scoop", gctx.config.distribute.scoop.is_some());
-    ctx.set("has_attestation", true);
+    // Attestation requires public repos — disable by default, users can enable
+    ctx.set("has_attestation", false);
 
     if let Some(pypi) = &gctx.config.distribute.pypi {
         ctx.set("pypi_package", pypi.package_name.as_str());

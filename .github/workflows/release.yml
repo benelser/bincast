@@ -108,9 +108,6 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - uses: actions/attest-build-provenance@b3e506e8c389afc651c5bacf2b8f2a1ea0557215  # v4
-        with:
-          subject-path: "artifacts/*"
 
       - uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe  # v2
         with:
