@@ -1,6 +1,5 @@
 #!/usr/bin/expect -f
-# Test: bincast init with Custom profile (option 4)
-# install=yes, pypi=no, npm=yes(@myorg), homebrew=yes(default), scoop=no, crates=yes
+# Test: Custom profile (option 4) — selective channels
 
 set timeout 10
 set bincast [lindex $argv 0]
@@ -11,33 +10,27 @@ send "4\r"
 
 expect "Install scripts"
 send "\r"
-
 expect "PyPI"
 send "n\r"
-
 expect "npm"
 send "y\r"
 expect "npm scope"
 send "@myorg\r"
-
 expect "Homebrew"
 send "y\r"
 expect "tap repo"
 send "\r"
-
 expect "Scoop"
 send "n\r"
-
 expect "crates.io"
 send "y\r"
 
-expect "enter"
+expect "Execute"
 send "\r"
 
-expect "Created releaser.toml"
+expect "Done!"
 expect eof
 
-# Assert
 set fp [open "releaser.toml" r]
 set content [read $fp]
 close $fp
@@ -48,8 +41,8 @@ if {![has $content "\[distribute.npm\]"]} { puts "FAIL: npm missing"; exit 1 }
 if {![has $content "@myorg"]} { puts "FAIL: npm scope missing"; exit 1 }
 if {![has $content "\[distribute.homebrew\]"]} { puts "FAIL: homebrew missing"; exit 1 }
 if {![has $content "\[distribute.cargo\]"]} { puts "FAIL: cargo missing"; exit 1 }
-if {[has $content "\[distribute.pypi\]"]} { puts "FAIL: pypi should not be present"; exit 1 }
-if {[has $content "\[distribute.scoop\]"]} { puts "FAIL: scoop should not be present"; exit 1 }
+if {[has $content "\[distribute.pypi\]"]} { puts "FAIL: pypi present"; exit 1 }
+if {[has $content "\[distribute.scoop\]"]} { puts "FAIL: scoop present"; exit 1 }
 
 puts "ALL PASS: custom profile"
 exit 0

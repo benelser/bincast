@@ -34,6 +34,7 @@ license = "MIT"
 repository = "https://github.com/user/test-tool"
 CARGOEOF
     echo 'fn main() { println!("hello"); }' > "$dir/src/main.rs"
+    (cd "$dir" && git init -q && git add . && git commit -q -m "init" 2>/dev/null) || true
 }
 
 # Create a workspace fixture
@@ -64,6 +65,7 @@ version.workspace = true
 edition = "2024"
 COREEOF
     echo '' > "$dir/crates/core/src/lib.rs"
+    (cd "$dir" && git init -q && git add . && git commit -q -m "init" 2>/dev/null) || true
 }
 
 launch_test() {

@@ -112,25 +112,24 @@ fn test_cli_unknown_command() {
 // --- Init Integration Tests ---
 
 #[test]
-fn test_init_creates_releaser_toml() {
+fn test_init_requires_interactive() {
     let dir = temp_project("init");
     write_cargo_toml(&dir);
     let bin = bincast_bin();
 
+    // Non-interactive (piped stdin) should fail with helpful message
     let output = Command::new(&bin)
         .arg("init")
         .current_dir(&dir)
         .output()
         .unwrap();
 
-    assert!(output.status.success(), "init failed: {}", String::from_utf8_lossy(&output.stderr));
-    assert!(dir.join("releaser.toml").exists());
-
-    // The generated file should be valid TOML that releaser can parse
-    let content = fs::read_to_string(dir.join("releaser.toml")).unwrap();
-    assert!(content.contains("test-tool"));
-    assert!(content.contains("[package]"));
-    assert!(content.contains("[targets]"));
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("interactively") || stderr.contains("TTY"),
+        "should mention interactivity: {stderr}"
+    );
 
     let _ = fs::remove_dir_all(&dir);
 }
@@ -279,20 +278,13 @@ release = true
 // --- Init → Generate Round-Trip ---
 
 #[test]
-fn test_init_then_generate_works() {
-    let dir = temp_project("init-generate");
+fn test_config_then_generate_works() {
+    // Write config directly (init is interactive, covered by expect tests)
+    let dir = temp_project("config-generate");
     write_cargo_toml(&dir);
+    write_bincast_toml(&dir);
     let bin = bincast_bin();
 
-    // Step 1: init
-    let output = Command::new(&bin)
-        .arg("init")
-        .current_dir(&dir)
-        .output()
-        .unwrap();
-    assert!(output.status.success(), "init failed");
-
-    // Step 2: generate (should work with the init-generated config)
     let output = Command::new(&bin)
         .arg("generate")
         .current_dir(&dir)
@@ -300,11 +292,10 @@ fn test_init_then_generate_works() {
         .unwrap();
     assert!(
         output.status.success(),
-        "generate failed after init: {}",
+        "generate failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 
-    // Should have at least the CI workflow
     assert!(dir.join(".github/workflows/release.yml").exists());
 
     let _ = fs::remove_dir_all(&dir);

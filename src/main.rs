@@ -50,16 +50,7 @@ fn main() {
 }
 
 fn run_init() -> Result<(), bincast::error::Error> {
-    let toml_str = bincast::init::run(Path::new("."))?;
-    let out_path = Path::new("releaser.toml");
-    if out_path.exists() {
-        return Err(bincast::error::Error::Config(
-            "releaser.toml already exists — delete it first or edit it directly".into(),
-        ));
-    }
-    std::fs::write(out_path, &toml_str)?;
-    eprintln!("  ✓ created releaser.toml");
-    Ok(())
+    bincast::init::run(Path::new("."))
 }
 
 fn run_generate(config_path: &str) -> Result<(), bincast::error::Error> {
