@@ -1,5 +1,6 @@
 //! The `releaser init` command — reads Cargo.toml and generates releaser.toml.
 
+use std::io::{self, BufRead, Write};
 use std::path::Path;
 
 use crate::cargo;
@@ -7,7 +8,8 @@ use crate::config::defaults;
 use crate::error::Result;
 
 /// Run init: read Cargo.toml from the given directory, generate releaser.toml.
-/// In non-interactive mode, enables GitHub Releases by default.
+/// If interactive (stdin is a tty), prompts for which channels to enable.
+/// Otherwise, enables GitHub Releases + install scripts by default.
 pub fn run(project_dir: &Path) -> Result<String> {
     let cargo_path = project_dir.join("Cargo.toml");
     if !cargo_path.exists() {
@@ -19,14 +21,129 @@ pub fn run(project_dir: &Path) -> Result<String> {
     let meta = cargo::read(&cargo_path)?;
     let mut config = defaults::from_cargo(&meta);
 
-    // Enable GitHub Releases by default
-    config.distribute.github = Some(crate::config::GitHubConfig { release: true });
-
-    // Enable install scripts by default
-    config.distribute.install_script = Some(crate::config::InstallScriptConfig { enabled: true });
+    if is_interactive() {
+        prompt_channels(&mut config, &meta.name)?;
+    } else {
+        // Non-interactive defaults
+        config.distribute.github = Some(crate::config::GitHubConfig { release: true });
+        config.distribute.install_script = Some(crate::config::InstallScriptConfig { enabled: true });
+    }
 
     let toml = serialize_config(&config);
     Ok(toml)
+}
+
+fn is_interactive() -> bool {
+    atty_stdin()
+}
+
+/// Check if stdin is a terminal (without the `atty` crate).
+#[cfg(unix)]
+fn atty_stdin() -> bool {
+    unsafe { libc_isatty(0) != 0 }
+}
+
+#[cfg(unix)]
+unsafe fn libc_isatty(fd: i32) -> i32 {
+    unsafe extern "C" {
+        safe fn isatty(fd: i32) -> i32;
+    }
+    isatty(fd)
+}
+
+#[cfg(not(unix))]
+fn atty_stdin() -> bool {
+    false // non-interactive on non-unix
+}
+
+fn prompt_channels(config: &mut crate::config::ReleaserConfig, name: &str) -> Result<()> {
+    let stdin = io::stdin();
+    let mut reader = stdin.lock();
+
+    eprintln!("Configuring distribution channels for '{name}':\n");
+
+    // GitHub Releases (always yes)
+    config.distribute.github = Some(crate::config::GitHubConfig { release: true });
+    eprintln!("  ✓ GitHub Releases (always enabled)");
+
+    // Install scripts
+    config.distribute.install_script = Some(crate::config::InstallScriptConfig {
+        enabled: ask(&mut reader, "Install scripts (curl|sh + irm|iex)?")?,
+    });
+
+    // PyPI
+    if ask(&mut reader, "PyPI (pip install)?")? {
+        config.distribute.pypi = Some(crate::config::PyPIConfig {
+            package_name: name.to_string(),
+        });
+    }
+
+    // npm
+    if ask(&mut reader, "npm (npm install)?")? {
+        let scope = ask_value(&mut reader, "  npm scope (e.g., @my-org)")?;
+        config.distribute.npm = Some(crate::config::NpmConfig {
+            scope,
+            package_name: None,
+        });
+    }
+
+    // Homebrew
+    if ask(&mut reader, "Homebrew tap?")? {
+        let (owner, _) = cargo::parse_github_url(&config.package.repository)
+            .unwrap_or(("user", "repo"));
+        let default_tap = format!("{owner}/homebrew-{name}");
+        let tap = ask_value_default(&mut reader, "  tap repo", &default_tap)?;
+        config.distribute.homebrew = Some(crate::config::HomebrewConfig { tap });
+    }
+
+    // Scoop
+    if ask(&mut reader, "Scoop bucket?")? {
+        let (owner, _) = cargo::parse_github_url(&config.package.repository)
+            .unwrap_or(("user", "repo"));
+        let default_bucket = format!("{owner}/scoop-{name}");
+        let bucket = ask_value_default(&mut reader, "  bucket repo", &default_bucket)?;
+        config.distribute.scoop = Some(crate::config::ScoopConfig { bucket });
+    }
+
+    // crates.io
+    if ask(&mut reader, "crates.io (cargo install)?")? {
+        config.distribute.cargo = Some(crate::config::CargoConfig {
+            crate_name: name.to_string(),
+        });
+    }
+
+    eprintln!();
+    Ok(())
+}
+
+fn ask(reader: &mut impl BufRead, question: &str) -> Result<bool> {
+    eprint!("  {question} [Y/n] ");
+    io::stderr().flush().ok();
+    let mut line = String::new();
+    reader.read_line(&mut line).map_err(crate::error::Error::Io)?;
+    let answer = line.trim().to_lowercase();
+    Ok(answer.is_empty() || answer == "y" || answer == "yes")
+}
+
+fn ask_value(reader: &mut impl BufRead, prompt: &str) -> Result<String> {
+    eprint!("{prompt}: ");
+    io::stderr().flush().ok();
+    let mut line = String::new();
+    reader.read_line(&mut line).map_err(crate::error::Error::Io)?;
+    Ok(line.trim().to_string())
+}
+
+fn ask_value_default(reader: &mut impl BufRead, prompt: &str, default: &str) -> Result<String> {
+    eprint!("{prompt} [{default}]: ");
+    io::stderr().flush().ok();
+    let mut line = String::new();
+    reader.read_line(&mut line).map_err(crate::error::Error::Io)?;
+    let value = line.trim();
+    if value.is_empty() {
+        Ok(default.to_string())
+    } else {
+        Ok(value.to_string())
+    }
 }
 
 /// Serialize a ReleaserConfig to TOML format.

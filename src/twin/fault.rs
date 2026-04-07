@@ -185,7 +185,7 @@ mod tests {
         let file = dir.join("test.tar.gz");
         std::fs::write(&file, b"data").unwrap();
 
-        let upload = gh::upload_asset("user", "repo", release.unwrap().id, &file, "tok");
+        let _upload = gh::upload_asset("user", "repo", release.unwrap().id, &file, "tok");
         // Upload retries 3 times but the fault only hits once, so it may succeed on retry
         // depending on timing. The key assertion is that the fault was injected.
 
