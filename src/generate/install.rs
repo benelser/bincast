@@ -76,11 +76,17 @@ detect_platform() {
 }
 
 fetch_latest_version() {
-    VERSION="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-        | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')"
+    if command -v gh >/dev/null 2>&1; then
+        VERSION="$(gh release view --repo "${REPO}" --json tagName --jq .tagName 2>/dev/null)"
+    fi
+    if [ -z "${VERSION}" ]; then
+        VERSION="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
+            | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')"
+    fi
 
     if [ -z "${VERSION}" ]; then
         echo "error: could not determine latest version"
+        echo "  If this is a private repo, install gh: https://cli.github.com/"
         exit 1
     fi
     echo "latest version: ${VERSION}"
@@ -88,25 +94,34 @@ fetch_latest_version() {
 
 download_and_install() {
     ARCHIVE="${NAME}-${TARGET}.tar.gz"
-    URL="https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE}"
-    CHECKSUM_URL="${URL}.sha256"
-
-    echo "downloading ${URL}"
 
     TMPDIR="$(mktemp -d)"
     trap 'rm -rf "${TMPDIR}"' EXIT
 
-    curl -fsSL "${URL}" -o "${TMPDIR}/${ARCHIVE}"
-    curl -fsSL "${CHECKSUM_URL}" -o "${TMPDIR}/${ARCHIVE}.sha256"
+    # Download using gh if available (supports private repos), else curl
+    if command -v gh >/dev/null 2>&1; then
+        echo "downloading ${ARCHIVE} via gh..."
+        gh release download "${VERSION}" --repo "${REPO}" \
+            --pattern "${ARCHIVE}" --pattern "${ARCHIVE}.sha256" \
+            --dir "${TMPDIR}" 2>/dev/null
+    fi
 
-    # Verify checksum
+    # Fallback to curl if gh didn't work or isn't installed
+    if [ ! -f "${TMPDIR}/${ARCHIVE}" ]; then
+        URL="https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE}"
+        echo "downloading ${URL}"
+        curl -fsSL "${URL}" -o "${TMPDIR}/${ARCHIVE}"
+        curl -fsSL "${URL}.sha256" -o "${TMPDIR}/${ARCHIVE}.sha256" 2>/dev/null || true
+    fi
+
+    # Verify checksum if sidecar exists
     cd "${TMPDIR}"
-    if command -v shasum >/dev/null 2>&1; then
-        shasum -a 256 -c "${ARCHIVE}.sha256"
-    elif command -v sha256sum >/dev/null 2>&1; then
-        sha256sum -c "${ARCHIVE}.sha256"
-    else
-        echo "warning: no checksum tool found, skipping verification"
+    if [ -f "${ARCHIVE}.sha256" ]; then
+        if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum -c "${ARCHIVE}.sha256"
+        elif command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 -c "${ARCHIVE}.sha256"
+        fi
     fi
 
     tar xzf "${ARCHIVE}"
@@ -162,6 +177,12 @@ function Detect-Platform {
 }
 
 function Fetch-LatestVersion {
+    # Try gh CLI first (works for private repos)
+    try {
+        $version = & gh release view --repo $Repo --json tagName --jq .tagName 2>$null
+        if ($version) { return $version }
+    } catch {}
+    # Fallback to API
     $Release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest"
     return $Release.tag_name
 }
@@ -170,10 +191,13 @@ function Download-And-Install {
     param($Platform, $Version)
 
     $Archive = "$Name-$Platform.zip"
-    $Url = "https://github.com/$Repo/releases/download/$Version/$Archive"
-    $ChecksumUrl = "$Url.sha256"
 
-    Write-Host "Downloading $Url"
+    # Try gh CLI first (supports private repos)
+    $downloaded = $false
+    try {
+        & gh release download $Version --repo $Repo --pattern $Archive --pattern "$Archive.sha256" --dir $env:TEMP 2>$null
+        if (Test-Path "$env:TEMP\$Archive") { $downloaded = $true }
+    } catch {}
 
     $TmpDir = New-TemporaryFile | ForEach-Object {
         Remove-Item $_
@@ -181,15 +205,26 @@ function Download-And-Install {
     }
 
     try {
-        Invoke-WebRequest -Uri $Url -OutFile "$TmpDir\$Archive"
-        Invoke-WebRequest -Uri $ChecksumUrl -OutFile "$TmpDir\$Archive.sha256"
+        if (-not $downloaded) {
+            $Url = "https://github.com/$Repo/releases/download/$Version/$Archive"
+            Write-Host "Downloading $Url"
+            Invoke-WebRequest -Uri $Url -OutFile "$TmpDir\$Archive"
+            Invoke-WebRequest -Uri "$Url.sha256" -OutFile "$TmpDir\$Archive.sha256" -ErrorAction SilentlyContinue
+        } else {
+            Move-Item "$env:TEMP\$Archive" "$TmpDir\$Archive"
+            if (Test-Path "$env:TEMP\$Archive.sha256") {
+                Move-Item "$env:TEMP\$Archive.sha256" "$TmpDir\$Archive.sha256"
+            }
+        }
 
-        # Verify checksum
-        $Expected = (Get-Content "$TmpDir\$Archive.sha256").Split(" ")[0]
-        $Actual = (Get-FileHash "$TmpDir\$Archive" -Algorithm SHA256).Hash.ToLower()
-        if ($Expected -ne $Actual) {
-            Write-Error "Checksum mismatch: expected $Expected, got $Actual"
-            exit 1
+        # Verify checksum if available
+        if (Test-Path "$TmpDir\$Archive.sha256") {
+            $Expected = (Get-Content "$TmpDir\$Archive.sha256").Split(" ")[0]
+            $Actual = (Get-FileHash "$TmpDir\$Archive" -Algorithm SHA256).Hash.ToLower()
+            if ($Expected -ne $Actual) {
+                Write-Error "Checksum mismatch: expected $Expected, got $Actual"
+                exit 1
+            }
         }
 
         Expand-Archive -Path "$TmpDir\$Archive" -DestinationPath $TmpDir -Force

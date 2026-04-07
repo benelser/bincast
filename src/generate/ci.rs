@@ -322,6 +322,7 @@ jobs:
     needs: [release]
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       id-token: write
     steps:
       - uses: {{ action_checkout }}

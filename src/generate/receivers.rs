@@ -42,25 +42,32 @@ on:
   repository_dispatch:
     types: [update-formula]
 
+permissions:
+  contents: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
       - name: Update formula
         env:
           VERSION: ${{ github.event.client_payload.version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # Strip leading 'v' from version
           VER="${VERSION#v}"
 
-          # Download checksums from the release
+          # Download checksums using gh CLI (works for both public and private repos)
           for target in aarch64-apple-darwin x86_64-apple-darwin aarch64-unknown-linux-gnu x86_64-unknown-linux-gnu; do
-            URL="https://github.com/{{ owner }}/{{ repo }}/releases/download/${VERSION}/{{ name }}-${target}.tar.gz.sha256"
-            SHA=$(curl -fsSL "$URL" | awk '{print $1}')
-            # Replace PLACEHOLDER or old SHA for this target in the formula
-            sed -i "/${target}/{ n; s/sha256 \"[a-f0-9]*\"/sha256 \"${SHA}\"/; }" Formula/{{ name }}.rb
+            SHA=$(gh release download "${VERSION}" \
+              --repo "{{ owner }}/{{ repo }}" \
+              --pattern "{{ name }}-${target}.tar.gz.sha256" \
+              --output - 2>/dev/null | awk '{print $1}')
+
+            if [ -n "$SHA" ]; then
+              sed -i "/${target}/{ n; s/sha256 \"[^\"]*\"/sha256 \"${SHA}\"/; }" Formula/{{ name }}.rb
+            fi
           done
 
           # Update version
@@ -71,6 +78,7 @@ jobs:
           git config user.name "bincast[bot]"
           git config user.email "bincast[bot]@users.noreply.github.com"
           git add Formula/{{ name }}.rb
+          git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "{{ name }} ${VERSION}"
           git push
 "##;
@@ -83,24 +91,30 @@ on:
   repository_dispatch:
     types: [update-manifest]
 
+permissions:
+  contents: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
       - name: Update manifest
         env:
           VERSION: ${{ github.event.client_payload.version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           VER="${VERSION#v}"
 
-          # Download checksum
-          URL="https://github.com/{{ owner }}/{{ repo }}/releases/download/${VERSION}/{{ name }}-x86_64-pc-windows-msvc.zip.sha256"
-          SHA=$(curl -fsSL "$URL" | awk '{print $1}')
+          # Download checksum using gh CLI (works for private repos)
+          SHA=$(gh release download "${VERSION}" \
+            --repo "{{ owner }}/{{ repo }}" \
+            --pattern "{{ name }}-x86_64-pc-windows-msvc.zip.sha256" \
+            --output - 2>/dev/null | awk '{print $1}')
 
           # Update version and hash in manifest
-          jq --arg ver "$VER" --arg sha "$SHA" \
+          jq --arg ver "$VER" --arg sha "${SHA:-UNKNOWN}" \
             '.version = $ver | .architecture["64bit"].hash = $sha | .architecture["64bit"].url = (.architecture["64bit"].url | gsub("v[0-9.]+"; "v" + $ver))' \
             bucket/{{ name }}.json > tmp.json && mv tmp.json bucket/{{ name }}.json
 
@@ -109,6 +123,7 @@ jobs:
           git config user.name "bincast[bot]"
           git config user.email "bincast[bot]@users.noreply.github.com"
           git add bucket/{{ name }}.json
+          git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "{{ name }} ${VERSION}"
           git push
 "#;
@@ -123,7 +138,8 @@ mod tests {
         assert!(output.contains("repository_dispatch"));
         assert!(output.contains("update-formula"));
         assert!(output.contains("Formula/my-tool.rb"));
-        assert!(output.contains("user/my-tool/releases"));
+        assert!(output.contains("user/my-tool"));
+        assert!(output.contains("gh release download"));
         assert!(output.contains("bincast[bot]"));
     }
 
