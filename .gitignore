@@ -2,3 +2,5 @@
 *.swp
 *.swo
 .DS_Store
+.dep-skeptic/
+.claude/
