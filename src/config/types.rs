@@ -284,7 +284,7 @@ impl PackageConfig {
 
         let repository = val
             .get_str("repository")
-            .ok_or_else(|| Error::Config("package.repository is required".into()))?
+            .unwrap_or("")
             .to_string();
 
         Ok(PackageConfig {

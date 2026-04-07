@@ -314,6 +314,6 @@ release = true
         let mut ctx = Context::with_config(config, false);
         let result = pipe.run(&mut ctx);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("must be a GitHub URL"));
+        assert!(result.unwrap_err().contains("not a GitHub URL"));
     }
 }

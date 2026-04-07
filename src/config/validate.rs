@@ -13,20 +13,18 @@ pub fn validate(config: &ReleaserConfig) -> Vec<String> {
         errors.push("package.binary must not be empty".into());
     }
 
-    if config.package.repository.is_empty() {
-        errors.push("package.repository must not be empty".into());
-    } else if !config.package.repository.starts_with("https://github.com/") {
-        errors.push(format!(
-            "package.repository must be a GitHub URL (got '{}')",
-            config.package.repository
-        ));
-    } else {
-        // Validate owner/repo structure
-        let path = config.package.repository.trim_start_matches("https://github.com/");
-        let parts: Vec<&str> = path.trim_end_matches('/').split('/').collect();
-        if parts.len() != 2 || parts[0].is_empty() || parts[1].is_empty() {
+    // Repository: optional, but if set must be a valid URL
+    if !config.package.repository.is_empty() {
+        if !config.package.repository.starts_with("https://") {
             errors.push(format!(
-                "package.repository must be https://github.com/owner/repo (got '{}')",
+                "package.repository must be an HTTPS URL (got '{}')",
+                config.package.repository
+            ));
+        }
+        // Warn if not GitHub — CI generation currently only supports GitHub Actions
+        if !config.package.repository.contains("github.com") {
+            errors.push(format!(
+                "package.repository '{}' is not a GitHub URL — CI generation currently only supports GitHub Actions",
                 config.package.repository
             ));
         }
@@ -156,7 +154,7 @@ release = true
 "#;
         let config = parse(input).unwrap();
         let errors = validate(&config);
-        assert!(errors.iter().any(|e| e.contains("must be a GitHub URL")));
+        assert!(errors.iter().any(|e| e.contains("not a GitHub URL")));
     }
 
     #[test]
