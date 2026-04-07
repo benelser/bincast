@@ -10,6 +10,7 @@ pub mod init;
 pub mod package;
 pub mod pipeline;
 pub mod publish;
+pub mod release;
 pub mod template;
 pub mod toml_parser;
 pub mod twin;

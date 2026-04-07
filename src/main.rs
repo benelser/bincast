@@ -30,6 +30,9 @@ fn main() {
             let config_path = config.as_deref().unwrap_or("releaser.toml");
             run_publish(config_path, &version, dry_run)
         }
+        Command::Release { version, dry_run } => {
+            bincast::release::run(version.as_deref(), dry_run)
+        }
         Command::Version => {
             println!("bincast {}", env!("CARGO_PKG_VERSION"));
             Ok(())

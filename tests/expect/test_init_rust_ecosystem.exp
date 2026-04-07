@@ -1,0 +1,29 @@
+#!/usr/bin/expect -f
+# Test: bincast init with Rust Ecosystem profile (option 2)
+
+set timeout 10
+set bincast [lindex $argv 0]
+
+spawn $bincast init
+expect "Choose"
+send "2\r"
+expect "enter"
+send "\r"
+expect "Created releaser.toml"
+expect eof
+
+# Assert
+set fp [open "releaser.toml" r]
+set content [read $fp]
+close $fp
+
+proc has {content text} { return [expr {[string first $text $content] >= 0}] }
+
+if {![has $content "\[distribute.github\]"]} { puts "FAIL: github missing"; exit 1 }
+if {![has $content "\[distribute.cargo\]"]} { puts "FAIL: cargo missing"; exit 1 }
+if {![has $content "\[distribute.install_script\]"]} { puts "FAIL: install_script missing"; exit 1 }
+if {[has $content "\[distribute.pypi\]"]} { puts "FAIL: pypi should not be present"; exit 1 }
+if {[has $content "\[distribute.npm\]"]} { puts "FAIL: npm should not be present"; exit 1 }
+
+puts "ALL PASS: rust ecosystem profile"
+exit 0
