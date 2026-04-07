@@ -32,6 +32,7 @@ NAME="{{ name }}"
 INSTALL_DIR="${HOME}/.local/bin"
 
 main() {
+    check_repo_access
     detect_platform
     fetch_latest_version
     download_and_install
@@ -75,6 +76,32 @@ detect_platform() {
     echo "detected platform: ${TARGET}"
 }
 
+check_repo_access() {
+    # Detect if repo is private by checking API response
+    HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' "https://api.github.com/repos/${REPO}" 2>/dev/null)"
+    if [ "${HTTP_CODE}" = "404" ]; then
+        IS_PRIVATE=true
+        if ! command -v gh >/dev/null 2>&1; then
+            echo ""
+            echo "error: ${REPO} appears to be a private repository."
+            echo ""
+            echo "  Private repos require the GitHub CLI (gh) for authenticated downloads."
+            echo ""
+            echo "  Install gh:"
+            echo "    macOS:   brew install gh"
+            echo "    Linux:   https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
+            echo "    Windows: winget install GitHub.cli"
+            echo ""
+            echo "  Then authenticate:"
+            echo "    gh auth login"
+            echo ""
+            exit 1
+        fi
+    else
+        IS_PRIVATE=false
+    fi
+}
+
 fetch_latest_version() {
     if command -v gh >/dev/null 2>&1; then
         VERSION="$(gh release view --repo "${REPO}" --json tagName --jq .tagName 2>/dev/null)"
@@ -86,7 +113,9 @@ fetch_latest_version() {
 
     if [ -z "${VERSION}" ]; then
         echo "error: could not determine latest version"
-        echo "  If this is a private repo, install gh: https://cli.github.com/"
+        if [ "${IS_PRIVATE}" = "true" ]; then
+            echo "  Run: gh auth login"
+        fi
         exit 1
     fi
     echo "latest version: ${VERSION}"
@@ -98,16 +127,21 @@ download_and_install() {
     TMPDIR="$(mktemp -d)"
     trap 'rm -rf "${TMPDIR}"' EXIT
 
-    # Download using gh if available (supports private repos), else curl
+    # Use gh for private repos or when available, else curl
     if command -v gh >/dev/null 2>&1; then
-        echo "downloading ${ARCHIVE} via gh..."
+        echo "downloading ${ARCHIVE}..."
         gh release download "${VERSION}" --repo "${REPO}" \
             --pattern "${ARCHIVE}" --pattern "${ARCHIVE}.sha256" \
             --dir "${TMPDIR}" 2>/dev/null
     fi
 
-    # Fallback to curl if gh didn't work or isn't installed
+    # Fallback to curl (public repos only)
     if [ ! -f "${TMPDIR}/${ARCHIVE}" ]; then
+        if [ "${IS_PRIVATE}" = "true" ]; then
+            echo "error: download failed — private repo requires gh auth"
+            echo "  Run: gh auth login"
+            exit 1
+        fi
         URL="https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE}"
         echo "downloading ${URL}"
         curl -fsSL "${URL}" -o "${TMPDIR}/${ARCHIVE}"
@@ -155,7 +189,33 @@ $Binary = "{{ binary }}"
 $Name = "{{ name }}"
 $InstallDir = "$env:USERPROFILE\.local\bin"
 
+function Check-RepoAccess {
+    try {
+        $response = Invoke-WebRequest -Uri "https://api.github.com/repos/$Repo" -UseBasicParsing -ErrorAction SilentlyContinue
+    } catch {
+        $statusCode = $_.Exception.Response.StatusCode.value__
+        if ($statusCode -eq 404) {
+            $script:IsPrivate = $true
+            try { $null = & gh --version 2>$null } catch {
+                Write-Host ""
+                Write-Host "Error: $Repo appears to be a private repository."
+                Write-Host ""
+                Write-Host "  Private repos require the GitHub CLI (gh) for authenticated downloads."
+                Write-Host ""
+                Write-Host "  Install gh:"
+                Write-Host "    winget install GitHub.cli"
+                Write-Host ""
+                Write-Host "  Then authenticate:"
+                Write-Host "    gh auth login"
+                Write-Host ""
+                exit 1
+            }
+        }
+    }
+}
+
 function Main {
+    Check-RepoAccess
     $Platform = Detect-Platform
     $Version = Fetch-LatestVersion
     Download-And-Install -Platform $Platform -Version $Version
