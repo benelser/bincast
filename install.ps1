@@ -8,7 +8,33 @@ $Binary = "bincast"
 $Name = "bincast"
 $InstallDir = "$env:USERPROFILE\.local\bin"
 
+function Check-RepoAccess {
+    try {
+        $response = Invoke-WebRequest -Uri "https://api.github.com/repos/$Repo" -UseBasicParsing -ErrorAction SilentlyContinue
+    } catch {
+        $statusCode = $_.Exception.Response.StatusCode.value__
+        if ($statusCode -eq 404) {
+            $script:IsPrivate = $true
+            try { $null = & gh --version 2>$null } catch {
+                Write-Host ""
+                Write-Host "Error: $Repo appears to be a private repository."
+                Write-Host ""
+                Write-Host "  Private repos require the GitHub CLI (gh) for authenticated downloads."
+                Write-Host ""
+                Write-Host "  Install gh:"
+                Write-Host "    winget install GitHub.cli"
+                Write-Host ""
+                Write-Host "  Then authenticate:"
+                Write-Host "    gh auth login"
+                Write-Host ""
+                exit 1
+            }
+        }
+    }
+}
+
 function Main {
+    Check-RepoAccess
     $Platform = Detect-Platform
     $Version = Fetch-LatestVersion
     Download-And-Install -Platform $Platform -Version $Version
@@ -30,6 +56,12 @@ function Detect-Platform {
 }
 
 function Fetch-LatestVersion {
+    # Try gh CLI first (works for private repos)
+    try {
+        $version = & gh release view --repo $Repo --json tagName --jq .tagName 2>$null
+        if ($version) { return $version }
+    } catch {}
+    # Fallback to API
     $Release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest"
     return $Release.tag_name
 }
@@ -38,10 +70,13 @@ function Download-And-Install {
     param($Platform, $Version)
 
     $Archive = "$Name-$Platform.zip"
-    $Url = "https://github.com/$Repo/releases/download/$Version/$Archive"
-    $ChecksumUrl = "$Url.sha256"
 
-    Write-Host "Downloading $Url"
+    # Try gh CLI first (supports private repos)
+    $downloaded = $false
+    try {
+        & gh release download $Version --repo $Repo --pattern $Archive --pattern "$Archive.sha256" --dir $env:TEMP 2>$null
+        if (Test-Path "$env:TEMP\$Archive") { $downloaded = $true }
+    } catch {}
 
     $TmpDir = New-TemporaryFile | ForEach-Object {
         Remove-Item $_
@@ -49,15 +84,26 @@ function Download-And-Install {
     }
 
     try {
-        Invoke-WebRequest -Uri $Url -OutFile "$TmpDir\$Archive"
-        Invoke-WebRequest -Uri $ChecksumUrl -OutFile "$TmpDir\$Archive.sha256"
+        if (-not $downloaded) {
+            $Url = "https://github.com/$Repo/releases/download/$Version/$Archive"
+            Write-Host "Downloading $Url"
+            Invoke-WebRequest -Uri $Url -OutFile "$TmpDir\$Archive"
+            Invoke-WebRequest -Uri "$Url.sha256" -OutFile "$TmpDir\$Archive.sha256" -ErrorAction SilentlyContinue
+        } else {
+            Move-Item "$env:TEMP\$Archive" "$TmpDir\$Archive"
+            if (Test-Path "$env:TEMP\$Archive.sha256") {
+                Move-Item "$env:TEMP\$Archive.sha256" "$TmpDir\$Archive.sha256"
+            }
+        }
 
-        # Verify checksum
-        $Expected = (Get-Content "$TmpDir\$Archive.sha256").Split(" ")[0]
-        $Actual = (Get-FileHash "$TmpDir\$Archive" -Algorithm SHA256).Hash.ToLower()
-        if ($Expected -ne $Actual) {
-            Write-Error "Checksum mismatch: expected $Expected, got $Actual"
-            exit 1
+        # Verify checksum if available
+        if (Test-Path "$TmpDir\$Archive.sha256") {
+            $Expected = (Get-Content "$TmpDir\$Archive.sha256").Split(" ")[0]
+            $Actual = (Get-FileHash "$TmpDir\$Archive" -Algorithm SHA256).Hash.ToLower()
+            if ($Expected -ne $Actual) {
+                Write-Error "Checksum mismatch: expected $Expected, got $Actual"
+                exit 1
+            }
         }
 
         Expand-Archive -Path "$TmpDir\$Archive" -DestinationPath $TmpDir -Force

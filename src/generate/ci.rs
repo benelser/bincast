@@ -322,7 +322,7 @@ jobs:
     needs: [release]
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       - uses: {{ action_checkout }}

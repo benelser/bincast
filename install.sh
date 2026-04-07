@@ -9,6 +9,7 @@ NAME="bincast"
 INSTALL_DIR="${HOME}/.local/bin"
 
 main() {
+    check_repo_access
     detect_platform
     fetch_latest_version
     download_and_install
@@ -52,12 +53,46 @@ detect_platform() {
     echo "detected platform: ${TARGET}"
 }
 
+check_repo_access() {
+    # Detect if repo is private by checking API response
+    HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' "https://api.github.com/repos/${REPO}" 2>/dev/null)"
+    if [ "${HTTP_CODE}" = "404" ]; then
+        IS_PRIVATE=true
+        if ! command -v gh >/dev/null 2>&1; then
+            echo ""
+            echo "error: ${REPO} appears to be a private repository."
+            echo ""
+            echo "  Private repos require the GitHub CLI (gh) for authenticated downloads."
+            echo ""
+            echo "  Install gh:"
+            echo "    macOS:   brew install gh"
+            echo "    Linux:   https://github.com/cli/cli/blob/trunk/docs/install_linux.md"
+            echo "    Windows: winget install GitHub.cli"
+            echo ""
+            echo "  Then authenticate:"
+            echo "    gh auth login"
+            echo ""
+            exit 1
+        fi
+    else
+        IS_PRIVATE=false
+    fi
+}
+
 fetch_latest_version() {
-    VERSION="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-        | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')"
+    if command -v gh >/dev/null 2>&1; then
+        VERSION="$(gh release view --repo "${REPO}" --json tagName --jq .tagName 2>/dev/null)"
+    fi
+    if [ -z "${VERSION}" ]; then
+        VERSION="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
+            | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')"
+    fi
 
     if [ -z "${VERSION}" ]; then
         echo "error: could not determine latest version"
+        if [ "${IS_PRIVATE}" = "true" ]; then
+            echo "  Run: gh auth login"
+        fi
         exit 1
     fi
     echo "latest version: ${VERSION}"
@@ -65,25 +100,39 @@ fetch_latest_version() {
 
 download_and_install() {
     ARCHIVE="${NAME}-${TARGET}.tar.gz"
-    URL="https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE}"
-    CHECKSUM_URL="${URL}.sha256"
-
-    echo "downloading ${URL}"
 
     TMPDIR="$(mktemp -d)"
     trap 'rm -rf "${TMPDIR}"' EXIT
 
-    curl -fsSL "${URL}" -o "${TMPDIR}/${ARCHIVE}"
-    curl -fsSL "${CHECKSUM_URL}" -o "${TMPDIR}/${ARCHIVE}.sha256"
+    # Use gh for private repos or when available, else curl
+    if command -v gh >/dev/null 2>&1; then
+        echo "downloading ${ARCHIVE}..."
+        gh release download "${VERSION}" --repo "${REPO}" \
+            --pattern "${ARCHIVE}" --pattern "${ARCHIVE}.sha256" \
+            --dir "${TMPDIR}" 2>/dev/null
+    fi
 
-    # Verify checksum
+    # Fallback to curl (public repos only)
+    if [ ! -f "${TMPDIR}/${ARCHIVE}" ]; then
+        if [ "${IS_PRIVATE}" = "true" ]; then
+            echo "error: download failed â private repo requires gh auth"
+            echo "  Run: gh auth login"
+            exit 1
+        fi
+        URL="https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE}"
+        echo "downloading ${URL}"
+        curl -fsSL "${URL}" -o "${TMPDIR}/${ARCHIVE}"
+        curl -fsSL "${URL}.sha256" -o "${TMPDIR}/${ARCHIVE}.sha256" 2>/dev/null || true
+    fi
+
+    # Verify checksum if sidecar exists
     cd "${TMPDIR}"
-    if command -v shasum >/dev/null 2>&1; then
-        shasum -a 256 -c "${ARCHIVE}.sha256"
-    elif command -v sha256sum >/dev/null 2>&1; then
-        sha256sum -c "${ARCHIVE}.sha256"
-    else
-        echo "warning: no checksum tool found, skipping verification"
+    if [ -f "${ARCHIVE}.sha256" ]; then
+        if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum -c "${ARCHIVE}.sha256"
+        elif command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 -c "${ARCHIVE}.sha256"
+        fi
     fi
 
     tar xzf "${ARCHIVE}"
