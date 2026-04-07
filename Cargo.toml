@@ -1,6 +1,6 @@
 [package]
 name = "bincast"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2024"
 description = "Ship your Rust binary to every package manager with one command"
 license = "MIT"
