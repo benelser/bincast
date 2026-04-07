@@ -7,6 +7,17 @@ pub struct ReleaserConfig {
     pub package: PackageConfig,
     pub targets: TargetsConfig,
     pub distribute: DistributeConfig,
+    /// Multiple binaries from a workspace. If empty, uses package.binary.
+    pub binaries: Vec<BinaryConfig>,
+}
+
+/// A binary to release from a workspace.
+#[derive(Debug, Clone)]
+pub struct BinaryConfig {
+    /// Binary name (what gets installed)
+    pub name: String,
+    /// Cargo package name (-p flag). If None, uses name.
+    pub package: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -221,11 +232,41 @@ impl ReleaserConfig {
             None => DistributeConfig::default(),
         };
 
+        // Parse [[binaries]] if present
+        let binaries = val
+            .get("binaries")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|b| {
+                        let name = b.get_str("name")?.to_string();
+                        let package = b.get_str("package").map(|s| s.to_string());
+                        Some(BinaryConfig { name, package })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
         Ok(ReleaserConfig {
             package,
             targets,
             distribute,
+            binaries,
         })
+    }
+
+    /// Get the list of binaries to release.
+    /// If [[binaries]] is configured, returns those.
+    /// Otherwise, returns a single binary from [package].
+    pub fn effective_binaries(&self) -> Vec<BinaryConfig> {
+        if self.binaries.is_empty() {
+            vec![BinaryConfig {
+                name: self.package.binary.clone(),
+                package: self.package.workspace_package.clone(),
+            }]
+        } else {
+            self.binaries.clone()
+        }
     }
 }
 

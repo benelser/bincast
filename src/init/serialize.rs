@@ -28,6 +28,17 @@ pub fn serialize_config(config: &ReleaserConfig) -> String {
     }
     out.push_str("]\n");
 
+    // Multi-binary support
+    if !config.binaries.is_empty() {
+        for bin in &config.binaries {
+            out.push_str("\n[[binaries]]\n");
+            out.push_str(&format!("name = \"{}\"\n", bin.name));
+            if let Some(pkg) = &bin.package {
+                out.push_str(&format!("package = \"{pkg}\"\n"));
+            }
+        }
+    }
+
     if let Some(gh) = &config.distribute.github {
         out.push_str(&format!("\n[distribute.github]\nrelease = {}\n", gh.release));
     }
@@ -90,6 +101,7 @@ mod tests {
                 cargo: Some(CargoConfig { crate_name: "durable-runtime".into() }),
                 install_script: Some(InstallScriptConfig { enabled: true }),
             },
+            binaries: Vec::new(),
         };
 
         let toml_str = serialize_config(&config);

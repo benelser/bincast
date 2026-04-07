@@ -21,6 +21,7 @@ pub fn from_cargo(cargo: &CargoMetadata) -> ReleaserConfig {
             platforms: default_platforms(),
         },
         distribute: DistributeConfig::default(),
+        binaries: Vec::new(),
     }
 }
 

@@ -14,13 +14,15 @@ use super::prompts;
 pub struct Detection {
     pub name: String,
     pub version: String,
-    pub binary: Option<String>,
+    pub _binary: Option<String>,
     pub repository: String,
     pub owner: String,
     pub repo_name: String,
     pub is_workspace: bool,
     pub cargo_meta: CargoMetadata,
     pub gh_available: bool,
+    /// All binary crates found in workspace (empty for single crate)
+    pub all_binaries: Vec<(String, Option<String>)>, // (binary_name, package_name)
 }
 
 pub fn detect(project_dir: &Path) -> Result<Detection> {
@@ -34,6 +36,19 @@ pub fn detect(project_dir: &Path) -> Result<Detection> {
     };
 
     let is_workspace = matches!(&project, cargo::ProjectKind::Workspace { .. });
+
+    let all_binaries: Vec<(String, Option<String>)> = match &project {
+        cargo::ProjectKind::Workspace { members, .. } => {
+            cargo::workspace_binaries(members)
+                .iter()
+                .map(|m| {
+                    let bin_name = m.binary_name.clone().unwrap_or_else(|| m.name.clone());
+                    (bin_name, Some(m.name.clone()))
+                })
+                .collect()
+        }
+        _ => Vec::new(),
+    };
 
     let (owner, repo_name) = cargo::parse_github_url(
         meta.repository.as_deref().unwrap_or("")
@@ -49,13 +64,14 @@ pub fn detect(project_dir: &Path) -> Result<Detection> {
     Ok(Detection {
         name: meta.name.clone(),
         version: meta.version.clone(),
-        binary: meta.binary.clone(),
+        _binary: meta.binary.clone(),
         repository: meta.repository.clone().unwrap_or_default(),
         owner,
         repo_name,
         is_workspace,
         cargo_meta: meta,
         gh_available,
+        all_binaries,
     })
 }
 
@@ -224,6 +240,16 @@ fn configure_custom(det: &Detection) -> Result<ChannelConfig> {
 pub fn build_config(det: &Detection, ch: &ChannelConfig) -> ReleaserConfig {
     let mut config = defaults::from_cargo(&det.cargo_meta);
     config.distribute.github = Some(GitHubConfig { release: true });
+
+    // Populate binaries for multi-binary workspaces
+    if det.all_binaries.len() > 1 {
+        config.binaries = det.all_binaries.iter().map(|(name, pkg)| {
+            crate::config::BinaryConfig {
+                name: name.clone(),
+                package: pkg.clone(),
+            }
+        }).collect();
+    }
 
     if ch.install_scripts {
         config.distribute.install_script = Some(InstallScriptConfig { enabled: true });

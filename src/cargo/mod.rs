@@ -87,6 +87,11 @@ pub fn read_project(dir: &Path) -> Result<ProjectKind> {
     Ok(ProjectKind::SingleCrate(meta))
 }
 
+/// Get all binary crate members from a workspace.
+pub fn workspace_binaries(members: &[WorkspaceMember]) -> Vec<&WorkspaceMember> {
+    members.iter().filter(|m| m.has_binary).collect()
+}
+
 /// Resolve the best CargoMetadata for a workspace, picking the binary crate
 /// and inheriting workspace-level metadata.
 pub fn resolve_workspace_binary(
@@ -94,8 +99,7 @@ pub fn resolve_workspace_binary(
     root: &WorkspaceRoot,
     members: &[WorkspaceMember],
 ) -> Result<CargoMetadata> {
-    // Find binary members
-    let binaries: Vec<&WorkspaceMember> = members.iter().filter(|m| m.has_binary).collect();
+    let binaries = workspace_binaries(members);
 
     let member = match binaries.len() {
         0 => return Err(Error::Config(
@@ -103,7 +107,6 @@ pub fn resolve_workspace_binary(
         )),
         1 => binaries[0],
         _ => {
-            // Multiple binaries — pick the first one, user can override later
             eprintln!(
                 "  ! Found {} binary crates: {}",
                 binaries.len(),

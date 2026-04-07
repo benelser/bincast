@@ -44,16 +44,19 @@ pub fn run(project_dir: &Path) -> Result<()> {
     eprintln!("  bincast v{} — Ship your Rust binary everywhere", env!("CARGO_PKG_VERSION"));
     eprintln!();
     if detection.is_workspace {
-        eprintln!("  Detected workspace, using binary: {}", detection.name);
+        if detection.all_binaries.len() > 1 {
+            eprintln!("  Detected workspace with {} binaries:", detection.all_binaries.len());
+            for (bin, pkg) in &detection.all_binaries {
+                let pkg_info = pkg.as_deref().unwrap_or(bin);
+                eprintln!("    + {bin} (package: {pkg_info})");
+            }
+        } else {
+            eprintln!("  Detected workspace, binary: {}", detection.name);
+        }
     } else {
         eprintln!("  Detected: {} v{} (from Cargo.toml)", detection.name, detection.version);
     }
     eprintln!("  Repository: {}", detection.repository);
-    if let Some(bin) = &detection.binary
-        && bin != &detection.name
-    {
-        eprintln!("  Binary: {bin}");
-    }
     eprintln!();
 
     // Stage 2: PROFILE
