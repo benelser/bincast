@@ -1,0 +1,38 @@
+#!/usr/bin/expect -f
+# Test: bincast init in a workspace project
+# Should detect workspace, find binary crate, and show workspace info
+
+set timeout 10
+set bincast [lindex $argv 0]
+
+# The workspace fixture is set up by run_all.sh with a special flag
+spawn $bincast init
+
+expect {
+    "Detected workspace" { puts "OK: workspace detected" }
+    "Detected:" { puts "OK: single crate (workspace detection may vary)" }
+    timeout { puts "FAIL: no detection message"; exit 1 }
+}
+
+expect "Choose"
+send "3\r"
+
+expect "enter"
+send "\r"
+
+expect "Created releaser.toml"
+expect eof
+
+# Assert
+set fp [open "releaser.toml" r]
+set content [read $fp]
+close $fp
+
+proc has {content text} { return [expr {[string first $text $content] >= 0}] }
+
+# Should have the binary crate name, not the workspace root
+if {![has $content "my-cli"]} { puts "FAIL: binary name my-cli not found"; exit 1 }
+if {![has $content "\[distribute.github\]"]} { puts "FAIL: github missing"; exit 1 }
+
+puts "ALL PASS: workspace init"
+exit 0
