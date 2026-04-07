@@ -14,4 +14,5 @@ pub mod release;
 pub mod template;
 pub mod toml_parser;
 pub mod twin;
+pub mod version;
 pub mod yaml;

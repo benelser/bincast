@@ -33,6 +33,9 @@ fn main() {
         Command::Release { version, dry_run } => {
             bincast::release::run(version.as_deref(), dry_run)
         }
+        Command::Bump { bump } => {
+            bincast::version::run(&bump)
+        }
         Command::Version => {
             println!("bincast {}", env!("CARGO_PKG_VERSION"));
             Ok(())

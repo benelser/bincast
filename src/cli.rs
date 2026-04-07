@@ -20,6 +20,10 @@ pub enum Command {
         version: Option<String>,
         dry_run: bool,
     },
+    Bump {
+        /// patch, minor, major, or explicit X.Y.Z
+        bump: String,
+    },
     Version,
     Help,
 }
@@ -58,6 +62,11 @@ pub fn parse_from(args: &[String]) -> Result<Command, String> {
                 config,
             })
         }
+        "version" if args.len() > 1 && !args[1].starts_with('-') => {
+            // `bincast version patch` — NOT `bincast version` (which shows version)
+            let bump = args[1].clone();
+            Ok(Command::Bump { bump })
+        }
         "release" => {
             let version = args
                 .get(1)
@@ -92,7 +101,8 @@ COMMANDS:
     init       Initialize bincast.toml from Cargo.toml
     generate   Generate CI workflows, install scripts, and package manifests
     check      Validate config and check name availability
-    release    Tag a version, push, and watch CI
+    version    Bump version: patch, minor, major, or X.Y.Z
+    release    Tag current Cargo.toml version and push
     publish    Build and publish locally to all channels
 
 OPTIONS:
