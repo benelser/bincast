@@ -69,13 +69,37 @@ pub fn run(version: Option<&str>, dry_run: bool) -> Result<()> {
     }
     eprintln!("  ✓ tag pushed");
 
-    // Step 5: Find and watch CI
+    // Step 5: Find the CI run triggered by the tag push
     eprintln!();
-    eprintln!("  watching CI...");
-    eprintln!();
+    eprintln!("  waiting for CI to start...");
+
+    // Give GitHub a moment to queue the run
+    std::thread::sleep(std::time::Duration::from_secs(3));
+
+    // Find the run ID for this tag
+    let run_id = Command::new("gh")
+        .args(["run", "list", "--limit", "1", "--json", "databaseId", "--jq", ".[0].databaseId"])
+        .output()
+        .ok()
+        .and_then(|o| {
+            let id = String::from_utf8_lossy(&o.stdout).trim().to_string();
+            if id.is_empty() { None } else { Some(id) }
+        });
+
+    let run_id = match run_id {
+        Some(id) => {
+            eprintln!("  watching CI run {id}...");
+            eprintln!();
+            id
+        }
+        None => {
+            eprintln!("  ! could not find CI run — check GitHub Actions manually");
+            return Ok(());
+        }
+    };
 
     let watch_result = Command::new("gh")
-        .args(["run", "watch", "--exit-status"])
+        .args(["run", "watch", &run_id, "--exit-status"])
         .output();
 
     match watch_result {

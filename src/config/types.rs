@@ -27,31 +27,60 @@ pub struct TargetsConfig {
     pub platforms: Vec<TargetTriple>,
 }
 
-/// A validated Rust target triple.
+/// A Rust target triple. Accepts any valid triple — known targets get
+/// smart defaults for runner/extension mapping, unknown targets are
+/// accepted with best-effort inference from the triple string.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TargetTriple(String);
 
 impl TargetTriple {
+    /// Well-known targets with verified runner mappings.
+    /// Based on ruff/uv's 18-target matrix.
     const KNOWN: &[&str] = &[
+        // macOS
         "aarch64-apple-darwin",
         "x86_64-apple-darwin",
+        // Linux glibc
         "aarch64-unknown-linux-gnu",
         "x86_64-unknown-linux-gnu",
+        "i686-unknown-linux-gnu",
+        "armv7-unknown-linux-gnueabihf",
+        "s390x-unknown-linux-gnu",
+        "powerpc64le-unknown-linux-gnu",
+        "riscv64gc-unknown-linux-gnu",
+        // Linux musl
         "aarch64-unknown-linux-musl",
         "x86_64-unknown-linux-musl",
+        "i686-unknown-linux-musl",
+        "armv7-unknown-linux-musleabihf",
+        // Windows
         "x86_64-pc-windows-msvc",
         "aarch64-pc-windows-msvc",
-        "i686-unknown-linux-gnu",
         "i686-pc-windows-msvc",
-        "armv7-unknown-linux-gnueabihf",
+        // FreeBSD
+        "x86_64-unknown-freebsd",
+        // Android
+        "aarch64-linux-android",
     ];
 
+    /// Accept any target triple. Known triples get smart defaults,
+    /// unknown triples are accepted with best-effort inference.
     pub fn new(triple: &str) -> Result<Self, String> {
-        if Self::KNOWN.contains(&triple) {
-            Ok(TargetTriple(triple.to_string()))
-        } else {
-            Err(format!("unknown target triple: '{triple}'. Known targets: {}", Self::KNOWN.join(", ")))
+        if triple.is_empty() {
+            return Err("target triple must not be empty".into());
         }
+        // Basic sanity: must contain at least one hyphen
+        if !triple.contains('-') {
+            return Err(format!("invalid target triple format: '{triple}' (expected arch-vendor-os or arch-os)"));
+        }
+        if !Self::KNOWN.contains(&triple) {
+            eprintln!("  ! unknown target '{triple}' — will use best-effort runner/extension mapping");
+        }
+        Ok(TargetTriple(triple.to_string()))
+    }
+
+    pub fn is_known(&self) -> bool {
+        Self::KNOWN.contains(&self.0.as_str())
     }
 
     pub fn as_str(&self) -> &str {
@@ -65,30 +94,25 @@ impl TargetTriple {
             "linux"
         } else if self.0.contains("windows") {
             "windows"
+        } else if self.0.contains("freebsd") {
+            "freebsd"
+        } else if self.0.contains("android") {
+            "android"
         } else {
             "unknown"
         }
     }
 
     pub fn arch(&self) -> &str {
-        if self.0.starts_with("aarch64") {
-            "aarch64"
-        } else if self.0.starts_with("x86_64") {
-            "x86_64"
-        } else if self.0.starts_with("i686") {
-            "i686"
-        } else if self.0.starts_with("armv7") {
-            "armv7"
-        } else {
-            "unknown"
-        }
+        // Extract arch from the first component of the triple
+        self.0.split('-').next().unwrap_or("unknown")
     }
 
     pub fn github_runner(&self) -> &str {
         match self.os() {
             "macos" => "macos-latest",
             "windows" => "windows-latest",
-            "linux" => "ubuntu-latest",
+            "linux" | "freebsd" | "android" => "ubuntu-latest",
             _ => "ubuntu-latest",
         }
     }
