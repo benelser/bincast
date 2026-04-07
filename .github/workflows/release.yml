@@ -83,7 +83,9 @@ jobs:
           done
 
       - name: Smoke test
-        if: runner.os != 'Windows'
+        if: |
+          runner.os != 'Windows' &&
+          !(runner.arch == 'X64' && contains(matrix.target, 'aarch64'))
         run: |
           target/${{ matrix.target }}/release/bincast --help
 
