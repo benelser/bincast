@@ -43,7 +43,9 @@ gh secret list --repo owner/repo
 
 Only set up missing secrets.
 
-## Flow: Browser-assisted (Playwright MCP available)
+## Flow: Browser-assisted (with Playwright MCP)
+
+> **IMPORTANT:** Use the `@playwright/mcp` server tools (prefixed with `browser_`), NOT chrome-devtools or other browser MCP tools. Playwright MCP is declared as a dependency in this package's `apm.yml`.
 
 The agent navigates the user to the correct page and provides exact instructions. The agent DOES NOT read token values from the page.
 

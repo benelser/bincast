@@ -142,6 +142,8 @@ fn channels_from_flags(flags: &InitFlags, det: &stages::Detection) -> Result<sta
 
     let owner = &det.owner;
     let name = &det.name;
+    // Use repo name (from git remote) for Homebrew/Scoop repos, not crate name
+    let repo_name = &det.repo_name;
 
     let npm_scope = if channels.contains(&"npm") {
         Some(flags.npm_scope.clone().ok_or_else(|| {
@@ -152,13 +154,13 @@ fn channels_from_flags(flags: &InitFlags, det: &stages::Detection) -> Result<sta
     };
 
     let homebrew_tap = if channels.contains(&"homebrew") || channels.contains(&"brew") {
-        Some(flags.tap.clone().unwrap_or_else(|| format!("{owner}/homebrew-{name}")))
+        Some(flags.tap.clone().unwrap_or_else(|| format!("{owner}/homebrew-{repo_name}")))
     } else {
         None
     };
 
     let scoop_bucket = if channels.contains(&"scoop") {
-        Some(flags.bucket.clone().unwrap_or_else(|| format!("{owner}/scoop-{name}")))
+        Some(flags.bucket.clone().unwrap_or_else(|| format!("{owner}/scoop-{repo_name}")))
     } else {
         None
     };

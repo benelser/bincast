@@ -151,9 +151,9 @@ pub fn configure_channels(profile: Profile, det: &Detection) -> Result<ChannelCo
 
 fn configure_maximum(det: &Detection) -> Result<ChannelConfig> {
     let npm_scope = prompts::input("npm scope (e.g., @my-org)")?;
-    let default_tap = format!("{}/homebrew-{}", det.owner, det.name);
+    let default_tap = format!("{}/homebrew-{}", det.owner, det.repo_name);
     let tap = prompts::input_default("Homebrew tap", &default_tap)?;
-    let default_bucket = format!("{}/scoop-{}", det.owner, det.name);
+    let default_bucket = format!("{}/scoop-{}", det.owner, det.repo_name);
     let bucket = prompts::input_default("Scoop bucket", &default_bucket)?;
 
     Ok(ChannelConfig {
@@ -208,14 +208,14 @@ fn configure_custom(det: &Detection) -> Result<ChannelConfig> {
     };
 
     let homebrew = if prompts::ask_yn("Homebrew tap", true)? {
-        let default = format!("{}/homebrew-{}", det.owner, det.name);
+        let default = format!("{}/homebrew-{}", det.owner, det.repo_name);
         Some(prompts::input_default("  tap repo", &default)?)
     } else {
         None
     };
 
     let scoop = if prompts::ask_yn("Scoop bucket", true)? {
-        let default = format!("{}/scoop-{}", det.owner, det.name);
+        let default = format!("{}/scoop-{}", det.owner, det.repo_name);
         Some(prompts::input_default("  bucket repo", &default)?)
     } else {
         None
@@ -243,6 +243,12 @@ fn configure_custom(det: &Detection) -> Result<ChannelConfig> {
 
 pub fn build_config(det: &Detection, ch: &ChannelConfig) -> ReleaserConfig {
     let mut config = defaults::from_cargo(&det.cargo_meta);
+
+    // Override repository with detected URL (git remote fallback)
+    if config.package.repository.is_empty() && !det.repository.is_empty() {
+        config.package.repository = det.repository.clone();
+    }
+
     config.distribute.github = Some(GitHubConfig { release: true });
 
     // Populate binaries for multi-binary workspaces

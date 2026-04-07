@@ -156,9 +156,7 @@ impl Pipe for CargoTomlCheckPipe {
         if meta.version.is_empty() {
             errors.push("Cargo.toml: package.version is empty".to_string());
         }
-        if meta.repository.is_none() {
-            errors.push("Cargo.toml: package.repository is not set (needed for release URLs)".to_string());
-        }
+        // repository is optional in Cargo.toml — bincast.toml can provide it via git remote detection
 
         if errors.is_empty() {
             eprintln!("  ✓ Cargo.toml: {} v{}", meta.name, meta.version);
