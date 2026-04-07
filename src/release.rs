@@ -69,11 +69,37 @@ pub fn run(version: Option<&str>, dry_run: bool) -> Result<()> {
     }
     eprintln!("  ✓ tag pushed");
 
-    // Step 5: Find the CI run triggered by the tag push
+    // Step 5: Watch CI (optional — requires gh CLI)
     eprintln!();
-    eprintln!("  waiting for CI to start...");
 
-    // Give GitHub a moment to queue the run
+    let gh_available = Command::new("gh").arg("--version").output().is_ok();
+
+    if !gh_available {
+        // No gh — give the user everything they need to follow manually
+        eprintln!("  ✓ tag {version} pushed — CI is running");
+        eprintln!();
+
+        let repo_url = Command::new("git")
+            .args(["remote", "get-url", "origin"])
+            .output()
+            .ok()
+            .map(|o| {
+                String::from_utf8_lossy(&o.stdout)
+                    .trim()
+                    .replace("git@github.com:", "https://github.com/")
+                    .replace(".git", "")
+            });
+
+        if let Some(url) = &repo_url {
+            eprintln!("  Watch CI:     {url}/actions");
+            eprintln!("  Release:      {url}/releases/tag/{version}");
+        }
+        eprintln!();
+        eprintln!("  Tip: install gh (https://cli.github.com) to watch CI inline");
+        return Ok(());
+    }
+
+    eprintln!("  waiting for CI to start...");
     std::thread::sleep(std::time::Duration::from_secs(3));
 
     // Find the run ID for this tag
@@ -103,53 +129,35 @@ pub fn run(version: Option<&str>, dry_run: bool) -> Result<()> {
         .output();
 
     match watch_result {
-        Ok(output) => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            eprint!("{stderr}");
-
-            if output.status.success() {
-                eprintln!();
-                eprintln!("  ✓ release {version} complete!");
-                eprintln!();
-
-                // Try to get the release URL
-                if let Ok(url_output) = Command::new("gh")
-                    .args(["release", "view", &version, "--json", "url", "--jq", ".url"])
-                    .output()
-                {
-                    let url = String::from_utf8_lossy(&url_output.stdout);
-                    let url = url.trim();
-                    if !url.is_empty() {
-                        eprintln!("  {url}");
-                    }
-                }
-            } else {
-                eprintln!();
-                eprintln!("  ✗ CI failed for {version}");
-                if !stdout.is_empty() {
-                    eprintln!("{stdout}");
-                }
-                eprintln!();
-                eprintln!("  View logs: gh run view --log-failed");
-                return Err(Error::Config(format!("release {version} failed — CI did not pass")));
-            }
-        }
-        Err(_) => {
-            // gh not installed — just print the URL
-            eprintln!("  gh CLI not found — can't watch CI automatically");
+        Ok(output) if output.status.success() => {
             eprintln!();
-            eprintln!("  Tag {version} pushed. Watch CI at:");
+            eprintln!("  ✓ release {version} complete!");
+            eprintln!();
 
-            // Try to get the repo URL
-            if let Ok(output) = Command::new("git")
-                .args(["remote", "get-url", "origin"])
+            if let Ok(url_output) = Command::new("gh")
+                .args(["release", "view", &version, "--json", "url", "--jq", ".url"])
                 .output()
             {
-                let url = String::from_utf8_lossy(&output.stdout);
-                let url = url.trim().replace("git@github.com:", "https://github.com/").replace(".git", "");
-                eprintln!("  {url}/actions");
+                let url = String::from_utf8_lossy(&url_output.stdout);
+                let url = url.trim();
+                if !url.is_empty() {
+                    eprintln!("  {url}");
+                }
             }
+        }
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            eprintln!();
+            eprintln!("  ✗ CI failed for {version}");
+            if !stdout.is_empty() {
+                eprintln!("{stdout}");
+            }
+            eprintln!();
+            eprintln!("  View logs: gh run view --log-failed");
+            return Err(Error::Config(format!("release {version} failed — CI did not pass")));
+        }
+        Err(e) => {
+            eprintln!("  ! failed to watch CI: {e}");
         }
     }
 
