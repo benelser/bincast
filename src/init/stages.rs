@@ -393,26 +393,58 @@ pub fn git_commit(project_dir: &Path) {
 
 // --- Secrets ---
 
+struct SecretInfo {
+    name: &'static str,
+    url: &'static str,
+    instructions: String,
+}
+
 pub fn handle_secrets(config: &ReleaserConfig, det: &Detection) {
-    let mut secrets_needed: Vec<(&str, &str, &str)> = Vec::new();
+    let mut secrets_needed: Vec<SecretInfo> = Vec::new();
 
     eprintln!("  Secrets:");
     eprintln!("    ✓ GITHUB_TOKEN — automatic in GitHub Actions");
 
     if config.distribute.cargo.is_some() {
-        secrets_needed.push(("CARGO_REGISTRY_TOKEN", "https://crates.io/settings/tokens", "crates.io"));
+        secrets_needed.push(SecretInfo {
+            name: "CARGO_REGISTRY_TOKEN",
+            url: "https://crates.io/settings/tokens",
+            instructions: "    Create at: https://crates.io/settings/tokens\n    Scopes: publish-new, publish-update".into(),
+        });
     }
     if config.distribute.pypi.is_some() {
-        secrets_needed.push(("PYPI_TOKEN", "https://pypi.org/manage/account/token/", "PyPI"));
+        secrets_needed.push(SecretInfo {
+            name: "PYPI_TOKEN",
+            url: "https://pypi.org/manage/account/token/",
+            instructions: "    Create at: https://pypi.org/manage/account/token/\n    Scope: Entire account (or project-scoped)".into(),
+        });
     }
     if config.distribute.npm.is_some() {
-        secrets_needed.push(("NPM_TOKEN", "https://www.npmjs.com/settings/~/tokens", "npm"));
+        secrets_needed.push(SecretInfo {
+            name: "NPM_TOKEN",
+            url: "https://www.npmjs.com/settings/~/tokens",
+            instructions: "    Create at: https://www.npmjs.com/settings/~/tokens\n    Type: Automation\n    Permissions: Read and write".into(),
+        });
     }
-    if config.distribute.homebrew.is_some() {
-        secrets_needed.push(("TAP_GITHUB_TOKEN", "https://github.com/settings/tokens", "Homebrew tap dispatch"));
+    if let Some(hb) = &config.distribute.homebrew {
+        secrets_needed.push(SecretInfo {
+            name: "TAP_GITHUB_TOKEN",
+            url: "https://github.com/settings/personal-access-tokens/new",
+            instructions: format!(
+                "    Create at: https://github.com/settings/personal-access-tokens/new\n\n    Fine-grained personal access token:\n      Repository access: Only select repositories -> {}\n      Permissions:\n        Contents: Read and write\n        Metadata: Read-only (auto-selected)",
+                hb.tap
+            ),
+        });
     }
-    if config.distribute.scoop.is_some() {
-        secrets_needed.push(("BUCKET_GITHUB_TOKEN", "https://github.com/settings/tokens", "Scoop bucket dispatch"));
+    if let Some(sc) = &config.distribute.scoop {
+        secrets_needed.push(SecretInfo {
+            name: "BUCKET_GITHUB_TOKEN",
+            url: "https://github.com/settings/personal-access-tokens/new",
+            instructions: format!(
+                "    Create at: https://github.com/settings/personal-access-tokens/new\n\n    Fine-grained personal access token:\n      Repository access: Only select repositories -> {}\n      Permissions:\n        Contents: Read and write\n        Metadata: Read-only (auto-selected)",
+                sc.bucket
+            ),
+        });
     }
 
     if secrets_needed.is_empty() {
@@ -420,8 +452,8 @@ pub fn handle_secrets(config: &ReleaserConfig, det: &Detection) {
         return;
     }
 
-    for (name, url, _purpose) in &secrets_needed {
-        eprintln!("    ! {name} — {url}");
+    for secret in &secrets_needed {
+        eprintln!("    ! {} — {}", secret.name, secret.url);
     }
 
     if !det.gh_available {
@@ -434,13 +466,19 @@ pub fn handle_secrets(config: &ReleaserConfig, det: &Detection) {
     eprintln!();
     let repo = format!("{}/{}", det.owner, det.repo_name);
 
-    for (name, url, _purpose) in &secrets_needed {
+    for secret in &secrets_needed {
+        let name = secret.name;
+        let _url = secret.url;
         if !prompts::can_prompt() {
             break;
         }
 
+        eprintln!("  {name}:");
+        eprintln!("{}", secret.instructions);
+        eprintln!();
+
         let set_now = prompts::confirm(
-            &format!("  Set {name} now? (create at {url})"),
+            &format!("  Set {name} now?"),
             false,
         );
 
