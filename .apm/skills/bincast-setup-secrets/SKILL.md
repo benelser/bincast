@@ -49,8 +49,14 @@ If `auth = "oidc"` is configured, no `PYPI_TOKEN` is needed. Instead, configure 
 
 1. Go to `https://pypi.org/manage/project/PACKAGE_NAME/settings/publishing/`
 2. Select **GitHub Actions** as the publisher
-3. Fill in: owner, repository, workflow name (`release.yml`), environment (`pypi` or blank)
+3. Fill in:
+   - **Owner:** GitHub username or org
+   - **Repository:** repo name (without owner prefix)
+   - **Workflow name:** `release.yml`
+   - **Environment name:** `pypi` (must match exactly — the generated workflow uses this environment)
 4. Save
+
+The environment name on PyPI **must match** the `environment: name:` in the generated workflow. bincast generates `pypi` as the environment name. If they don't match, the OIDC token exchange will fail.
 
 The CI workflow already has `id-token: write` permission and uses `pypa/gh-action-pypi-publish` for automatic OIDC token exchange.
 
