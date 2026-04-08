@@ -1,8 +1,8 @@
 ---
 name: bincast-shared
-description: "Bincast: shared reference for installation, configuration, and conventions."
+description: "Bincast: shared reference for installation, configuration, and all commands."
 metadata:
-  version: 0.1.1
+  version: 0.2.0
   openclaw:
     category: "reference"
     domain: "devtools"
@@ -13,50 +13,43 @@ metadata:
 
 # Bincast Reference
 
-## Pre-check: Is bincast installed?
+## Installation
 
-Before using any bincast skill, verify the binary is available:
+Before using any bincast skill, verify it is installed:
 
 ```bash
-# macOS/Linux
 which bincast && bincast version
-
-# Windows (PowerShell)
-Get-Command bincast -ErrorAction SilentlyContinue; bincast version
 ```
 
-If not found, install using the method appropriate for the user's platform:
+If not found, install it:
 
-**macOS:**
-```bash
-brew install benelser/bincast/bincast
-```
+| Platform | Command |
+|----------|---------|
+| macOS | `brew install benelser/bincast/bincast` |
+| Linux | `curl -sSL https://raw.githubusercontent.com/benelser/bincast/main/install.sh \| sh` |
+| Windows | `irm https://raw.githubusercontent.com/benelser/bincast/main/install.ps1 \| iex` |
+| Any (with Rust) | `cargo install bincast` |
 
-**Windows:**
-```powershell
-irm https://raw.githubusercontent.com/benelser/bincast/main/install.ps1 | iex
-```
+Do not build from source in `apm_modules`. Always install from a package manager.
 
-**Linux:**
-```bash
-curl -sSL https://raw.githubusercontent.com/benelser/bincast/main/install.sh | sh
-```
+## Commands
 
-**Any platform with Rust toolchain:**
-```bash
-cargo install bincast
-```
+| Command | Purpose |
+|---------|---------|
+| `bincast init` | Set up a project for multi-platform distribution |
+| `bincast generate` | Regenerate CI workflow and distribution files from config |
+| `bincast check` | Validate config, check registry name availability, verify secrets |
+| `bincast version patch\|minor\|major` | Bump version in Cargo.toml and commit |
+| `bincast release` | Tag the current version, push, and trigger CI |
 
-> [!IMPORTANT]
-> If `bincast` is not found on PATH, you MUST install it before proceeding with any other bincast skill. Guide the user through installation using the commands above.
+## Configuration
 
-## Configuration File: `bincast.toml`
+All configuration lives in `bincast.toml`. Created by `bincast init`, edited directly to add or change channels.
 
 ```toml
 [package]
 name = "my-tool"
 binary = "my-tool"
-description = "What it does"
 repository = "https://github.com/owner/repo"
 license = "MIT"
 
@@ -75,38 +68,20 @@ release = true
 enabled = true
 ```
 
-## Available Commands
+## Channels
 
-| Command | Purpose |
-|---------|---------|
-| `bincast init` | Interactive project setup — creates bincast.toml + CI + install scripts |
-| `bincast generate` | Regenerate CI workflow and distribution files |
-| `bincast check` | Validate config, check name availability, verify tokens |
-| `bincast version patch\|minor\|major` | Bump version in Cargo.toml and commit |
-| `bincast release` | Tag current Cargo.toml version, push, trigger CI |
-| `bincast publish` | Build and publish locally (without CI) |
+| Channel | Config section | Required secret |
+|---------|---------------|-----------------|
+| GitHub Releases | `[distribute.github]` | None (automatic `GITHUB_TOKEN`) |
+| PyPI | `[distribute.pypi]` | None with `auth = "oidc"`, or `PYPI_TOKEN` |
+| npm | `[distribute.npm]` | `NPM_TOKEN` |
+| Homebrew | `[distribute.homebrew]` | `TAP_GITHUB_TOKEN` |
+| crates.io | `[distribute.cargo]` | `CARGO_REGISTRY_TOKEN` |
+| Install scripts | `[distribute.install_script]` | None |
 
-## Distribution Channels
-
-GitHub Releases, PyPI, npm, Homebrew, crates.io, cargo-binstall, install scripts (curl|sh + irm|iex).
-
-## Key Conventions
+## Conventions
 
 - Version source of truth: `Cargo.toml`
-- Tag format: `v{version}` (e.g., `v0.2.0`)
-- CI triggers on tag push (`v*`)
+- Tag format: `v{version}` (e.g. `v0.2.0`)
+- CI triggers on tag push matching `v*`
 - `bincast version` bumps and commits. `bincast release` tags and pushes. They compose.
-
-## Secrets Reference
-
-When explaining secrets to users, use plain language:
-
-| Secret | Plain English | When needed |
-|---|---|---|
-| `GITHUB_TOKEN` | Automatic — GitHub provides this in CI | Always (no setup needed) |
-| `CARGO_REGISTRY_TOKEN` | API token for publishing to crates.io | When `[distribute.cargo]` is enabled |
-| `PYPI_TOKEN` | API token for publishing to PyPI | When `[distribute.pypi]` is enabled |
-| `NPM_TOKEN` | Automation token for publishing to npm | When `[distribute.npm]` is enabled |
-| `TAP_GITHUB_TOKEN` | GitHub PAT that lets CI push formula updates to your Homebrew tap repo | When `[distribute.homebrew]` is enabled |
-
-TAP and BUCKET tokens need fine-grained PATs with `Contents: Read and write` permission on the specific tap/bucket repository only.

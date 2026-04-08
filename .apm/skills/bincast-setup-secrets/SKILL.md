@@ -2,7 +2,7 @@
 name: bincast-setup-secrets
 description: "Bincast: Set up registry tokens and GitHub secrets for release publishing."
 metadata:
-  version: 0.1.5
+  version: 0.2.0
   openclaw:
     category: "recipe"
     domain: "devtools"
@@ -18,143 +18,87 @@ metadata:
 
 # Set Up Secrets
 
-> **PREREQUISITE:** Project must have `bincast.toml` (run bincast init first).
+> **Prerequisite:** Project must have `bincast.toml` (run `bincast init` first).
 
-> [!CAUTION]
-> **Never read token values from the browser into the agent context.** Tokens are sensitive credentials. The agent navigates the user to the right page and tells them what to create. The user copies the token and pastes it directly into `gh secret set` in their terminal. The agent never sees the token.
+> **Security:** Never read token values from the browser into agent context. The agent navigates to the right page and provides instructions. The user copies the token and pastes it into `gh secret set` themselves.
 
-## Determine which secrets are needed
+## Determine required secrets
 
 Read `bincast.toml` and check which channels are enabled:
 
-| Channel in config | Secret needed | Create at |
-|---|---|---|
+| Channel | Secret | Create at |
+|---------|--------|-----------|
 | `[distribute.cargo]` | `CARGO_REGISTRY_TOKEN` | https://crates.io/settings/tokens |
 | `[distribute.pypi]` with `auth = "token"` | `PYPI_TOKEN` | https://pypi.org/manage/account/token/ |
-| `[distribute.pypi]` with `auth = "oidc"` | **None** — configure trusted publisher on PyPI | https://docs.pypi.org/trusted-publishers/ |
+| `[distribute.pypi]` with `auth = "oidc"` | None | Configure trusted publisher on PyPI |
 | `[distribute.npm]` | `NPM_TOKEN` | https://www.npmjs.com/settings/~/tokens/granular-access-tokens/new |
 | `[distribute.homebrew]` | `TAP_GITHUB_TOKEN` | https://github.com/settings/personal-access-tokens/new |
-| `[distribute.github]` | `GITHUB_TOKEN` | **Automatic** — no action needed |
-
-### PyPI OIDC Trusted Publishing (recommended)
-
-If `bincast.toml` has `auth = "oidc"` under `[distribute.pypi]`, no PYPI_TOKEN is needed. Instead:
-
-1. Go to: `https://pypi.org/manage/project/PACKAGE_NAME/settings/publishing/`
-2. Under "Add a new publisher", select **GitHub Actions**
-3. Fill in:
-   - Owner: your GitHub username/org
-   - Repository: your repo name
-   - Workflow name: `release.yml`
-   - Environment: `pypi` (or leave blank)
-4. Click "Add"
-
-That's it. The CI workflow already has `id-token: write` permission and uses `pypa/gh-action-pypi-publish` which handles the OIDC token exchange automatically.
-
-Docs: https://docs.pypi.org/trusted-publishers/
+| `[distribute.github]` | `GITHUB_TOKEN` | Automatic, no setup needed |
 
 Check which are already set:
+
 ```bash
 gh secret list --repo owner/repo
 ```
 
 Only set up missing secrets.
 
-## Flow: Browser-assisted (with Playwright MCP)
+## PyPI OIDC trusted publishing
 
-> **IMPORTANT:** Use `@playwright/mcp` tools (prefixed with `browser_`), NOT chrome-devtools MCP. Check if Playwright MCP is available by looking for `browser_navigate` in your available tools. If only chrome-devtools tools are available (like `navigate_page`), fall back to the manual flow below.
+If `auth = "oidc"` is configured, no `PYPI_TOKEN` is needed. Instead, configure a trusted publisher on PyPI:
 
-The agent navigates the user to the correct page and provides exact instructions. The agent DOES NOT read token values from the page.
+1. Go to `https://pypi.org/manage/project/PACKAGE_NAME/settings/publishing/`
+2. Select **GitHub Actions** as the publisher
+3. Fill in: owner, repository, workflow name (`release.yml`), environment (`pypi` or blank)
+4. Save
 
-### For each missing secret:
+The CI workflow already has `id-token: write` permission and uses `pypa/gh-action-pypi-publish` for automatic OIDC token exchange.
 
-**Step 1: Navigate to the token creation page**
-```
-browser_navigate: <URL from table above>
-```
+Docs: https://docs.pypi.org/trusted-publishers/
 
-**Step 2: Wait for authentication**
-The browser will show a login page. Tell the user:
-```
-"I've opened [service] in the browser. Please log in if needed."
-```
+## Browser-assisted flow (with Playwright MCP)
 
-**Step 3: Guide through token creation**
-Use `browser_snapshot` to verify the page loaded, then tell the user exactly what to fill in:
+Use `@playwright/mcp` tools (prefixed with `browser_`). If only chrome-devtools tools are available, use the manual flow below.
 
-For CARGO_REGISTRY_TOKEN:
-```
-"You should see the crates.io API Tokens page. Please:
-  1. Click 'New Token'
-  2. Name: bincast-release
-  3. Scopes: publish-new, publish-update
-  4. Click 'Create'
-  5. Copy the token that appears"
-```
+For each missing secret:
 
-For PYPI_TOKEN:
-```
-"You should see the PyPI token creation page. Please:
-  1. Token name: bincast-release
-  2. Scope: Entire account (or project-scoped to your package)
-  3. Click 'Create token'
-  4. Copy the token (starts with pypi-)"
-```
+**1. Navigate** to the token creation page using `browser_navigate`.
 
-For NPM_TOKEN:
-```
-"You should see the npm tokens page. Please:
-  1. Click 'Generate New Token' → 'Granular Access Token'
-  2. Token name: bincast-release
-  3. Expiration: 90 days
-  4. Packages: Read and write
-  5. Organizations: No access
-  6. Click 'Generate Token'
-  5. Copy the token"
-```
+**2. Wait** for the user to log in if needed.
 
-For TAP_GITHUB_TOKEN / BUCKET_GITHUB_TOKEN:
-```
-"You should see the GitHub PAT creation page. Please:
-  1. Token name: bincast-tap (or bincast-bucket)
-  2. Expiration: 90 days
-  3. Repository access: Only select repositories → [tap/bucket repo name]
-  4. Permissions:
-     - Contents: Read and write
-     - Metadata: Read-only (auto-selected)
-  5. Click 'Generate token'
-  6. Copy the token"
-```
+**3. Guide** the user through token creation:
 
-**Step 4: User sets the secret**
-Tell the user to run this command and paste the token when prompted:
+| Secret | Instructions |
+|--------|-------------|
+| `CARGO_REGISTRY_TOKEN` | New Token, name: `bincast-release`, scopes: publish-new + publish-update |
+| `PYPI_TOKEN` | Token name: `bincast-release`, scope: entire account or project-scoped |
+| `NPM_TOKEN` | Granular Access Token, name: `bincast-release`, expiration: 90 days, packages: read and write |
+| `TAP_GITHUB_TOKEN` | Fine-grained PAT, name: `bincast-tap`, repository access: tap repo only, permissions: Contents read/write |
+
+**4. User sets the secret** (agent never sees the token):
+
 ```bash
 gh secret set SECRET_NAME --repo owner/repo
 ```
-The `gh secret set` command reads from stdin with masking — the token never appears in terminal history or agent context.
 
-**Step 5: Verify**
+**5. Verify:**
+
 ```bash
 gh secret list --repo owner/repo
 ```
 
-## Flow: Manual (no Playwright MCP)
+## Manual flow (no Playwright MCP)
 
-Same as above but skip the browser_navigate step. Just tell the user:
+Same steps, but instead of navigating the browser, tell the user:
+
 ```
-"Please open [URL] in your browser, then follow these steps..."
+Please open [URL] in your browser, then follow these steps...
 ```
 
 ## After all secrets are set
 
-Run `bincast check` to validate everything is ready, then proceed to first release:
 ```bash
-bincast version patch
-bincast release
+bincast check
 ```
 
-## See Also
-
-- `../bincast-init/SKILL.md` — project initialization
-- `../bincast-release/SKILL.md` — releasing
-- `../bincast-troubleshoot/SKILL.md` — CI failure diagnosis
+If everything passes, proceed to the first release (see `bincast-release`).

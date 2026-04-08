@@ -1,8 +1,8 @@
 ---
 name: bincast-init
-description: "Bincast: Set up a new project for multi-platform distribution."
+description: "Bincast: Set up a Rust project for multi-platform binary distribution."
 metadata:
-  version: 0.1.3
+  version: 0.2.0
   openclaw:
     category: "recipe"
     domain: "devtools"
@@ -15,91 +15,68 @@ metadata:
 
 # Initialize a Project
 
-> **PREREQUISITE:** Read `../bincast-shared/SKILL.md` — verify bincast is installed.
+> **Prerequisite:** Verify bincast is installed (see `bincast-shared`).
 
 ## Pre-checks
 
-Use your file reading tools (Read, Glob) for file checks — do NOT use shell `test -f` commands as security hooks may block them.
+Use file reading tools (Read, Glob) for checks. Do not use shell `test -f` commands.
 
-1. Read `Cargo.toml` — verify it exists and has `[package]` section
-2. Check that `bincast.toml` does NOT exist (use Glob or ls)
-3. Check git remote: `git remote -v`
-4. Check bincast binary: `bincast version` (if command fails, install it first — see `../bincast-shared/SKILL.md`)
+1. Read `Cargo.toml` to confirm it exists and has a `[package]` section
+2. Confirm `bincast.toml` does not already exist
+3. Run `git remote -v` to verify a git remote is configured
 
-If bincast is not installed, install it:
-```bash
-brew install benelser/bincast/bincast
-```
-Do NOT build from apm_modules source — always install from a package manager.
-
-## Agent Flow (non-interactive)
+## Non-interactive flow (recommended for agents)
 
 Ask the user how they want people to install their tool. Map their answer to channels:
 
-| User says | Channels flag |
-|-----------|--------------|
-| "pip install" | `pypi` |
-| "npm install" | `npm` (also need `--npm-scope`) |
-| "brew install" | `homebrew` |
-| "cargo install" | `cargo` |
-| "curl script" | `install-scripts` |
-| "just GitHub" | `github,install-scripts` |
-| "rust developers" | `github,cargo,install-scripts` |
+| User intent | Channels |
+|-------------|----------|
+| "pip install" | `github,pypi,install-scripts` |
+| "npm install" | `github,npm,install-scripts` (requires `--npm-scope`) |
+| "brew install" | `github,homebrew,install-scripts` |
+| "cargo install" | `github,cargo,install-scripts` |
+| "everything" | `github,pypi,npm,homebrew,cargo,install-scripts` |
+| "just GitHub releases" | `github,install-scripts` |
 
-Then run:
-
-```bash
-# Example: user wants pip + brew + cargo + curl
-bincast init --channels github,pypi,homebrew,cargo,install-scripts --yes
-
-# Example: user wants everything including npm
-
-# Example: minimal — just GitHub Releases
-bincast init --channels github,install-scripts --yes
-```
-
-### Channel-specific flags
-
-- `--npm-scope @org` — required when npm channel is enabled
-- `--tap owner/homebrew-name` — optional, defaults to `owner/homebrew-{project}`
-
-### Confirmation
-
-Always confirm with the user BEFORE running. Show them what will be set up:
+Confirm the plan with the user before running:
 
 ```
-"I'll set up bincast with these channels:
+I'll set up bincast with these channels:
   - GitHub Releases (archives + checksums)
-  - PyPI (pip install my-tool)
   - Homebrew (brew install owner/tap/my-tool)
   - crates.io (cargo install my-tool)
   - Install scripts (curl | sh)
 
-This will create bincast.toml, a CI workflow, install scripts, and a Homebrew tap repo.
-
-Proceed?"
+This creates bincast.toml, a CI workflow, and install scripts. Proceed?
 ```
 
-## Interactive Flow (human at terminal)
+Then run:
 
-If the user prefers to run it interactively:
+```bash
+bincast init --channels github,homebrew,cargo,install-scripts --yes
+```
+
+### Channel-specific flags
+
+| Flag | When required |
+|------|---------------|
+| `--npm-scope @org` | npm channel is included |
+| `--tap owner/homebrew-name` | Override default tap repo name |
+
+## Interactive flow
+
+If the user prefers to run it themselves:
 
 ```bash
 ! bincast init
 ```
 
-The `!` prefix runs it in the current session. The wizard will ask for profile and channel-specific config.
+The `!` prefix runs the command in the current session so the interactive prompts work.
 
-## After Init
+## After init
 
-1. Run `bincast check` to validate
-2. Review generated files: `cat bincast.toml`
-3. **Set up secrets** — invoke `../bincast-setup-secrets/SKILL.md` to create tokens and set GitHub Actions secrets. This is the critical next step before the first release.
+1. Run `bincast check` to validate the setup
+2. Set up secrets for the enabled channels (see `bincast-setup-secrets`)
+3. Make a first release: `bincast version patch && bincast release`
 
-## See Also
-
-- `../bincast-setup-secrets/SKILL.md` — create tokens and set secrets (browser-assisted)
-- `../bincast-shared/SKILL.md` — installation and config reference
-- `../bincast-release/SKILL.md` — releasing after setup
-
-> [!CAUTION]
+> **Important:** Do not skip secret setup. The first release will fail if required tokens are missing.

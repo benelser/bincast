@@ -2,31 +2,32 @@
 
 Ship your Rust binary to every package manager with one command.
 
-## Install
+## Get Started
+
+The fastest way to set up bincast is with an AI agent. Install the skill package and ask your agent to set up releases:
 
 ```bash
-brew install benelser/bincast/bincast
-# or
-cargo install bincast
-# or
-curl -sSL https://raw.githubusercontent.com/benelser/bincast/main/install.sh | sh
+apm install benelser/bincast
 ```
 
-## Quick Start
+Your agent reads the skills, installs bincast, asks how people should install your tool, and runs `bincast init` non-interactively. Works with Claude Code, Copilot, Cursor, and Codex.
+
+### Manual setup
 
 ```bash
-bincast init                    # set up distribution channels
-bincast version patch           # bump version
-bincast release                 # tag, push, CI does the rest
+brew install benelser/bincast/bincast   # or: cargo install bincast
+bincast init                            # interactive wizard
+bincast version patch                   # bump version
+bincast release                         # tag, push, CI does the rest
 ```
 
-That's it. Your binary is now available via:
+Your binary is now available via:
 
 ```bash
-pip install your-tool           # PyPI
-npm install @org/your-tool      # npm
 brew install you/tap/your-tool  # Homebrew
 cargo install your-tool         # crates.io
+pip install your-tool           # PyPI
+npm install @org/your-tool      # npm
 cargo binstall your-tool        # pre-built binary
 curl -sSL url | sh              # macOS/Linux
 irm url | iex                   # Windows
@@ -40,28 +41,33 @@ irm url | iex                   # Windows
 bincast init
 ```
 
-Interactive wizard that detects your project, asks how people should install it, and generates everything — config, CI workflow, install scripts, Homebrew formula, cargo-binstall metadata. Creates Homebrew tap repos automatically via `gh`. Guides you through setting up secrets.
+Detects your project, asks how people should install it, and generates everything: config, CI workflow, install scripts, Homebrew formula, and cargo-binstall metadata. Creates Homebrew tap repos via `gh` and guides you through secret setup.
 
-Or non-interactive for AI agents:
+Non-interactive mode:
 
 ```bash
 bincast init --channels github,pypi,cargo,homebrew,install-scripts --npm-scope @myorg --yes
 ```
 
-### Release
-
-Two composable commands:
+### Version
 
 ```bash
 bincast version patch    # bumps Cargo.toml, commits
-bincast release          # tags current version, pushes, CI builds + publishes
+bincast version minor
+bincast version major
 ```
 
-`version` decides WHAT to release. `release` executes it. They compose.
+### Release
+
+```bash
+bincast release          # tags current version, pushes — CI builds and publishes
+```
+
+`version` decides what to release. `release` executes it.
 
 For teams with branch protection:
-- Developer runs `bincast version patch` on a feature branch, includes it in PR
-- After merge, release lead runs `bincast release` on main
+1. Developer runs `bincast version patch` on a branch, opens a PR
+2. After merge, release lead runs `bincast release` on main
 
 ### Validate
 
@@ -69,23 +75,23 @@ For teams with branch protection:
 bincast check
 ```
 
-Validates config, checks name availability on registries, verifies tokens are set.
+Validates config, checks name availability on registries, and verifies secrets are configured.
 
 ## Channels
 
-| Channel | What bincast produces |
+| Channel | What bincast generates |
 |---------|----------------------|
-| **GitHub Releases** | Archives (tar.gz/zip) + SHA-256 checksums |
-| **PyPI** | maturin wheels, OIDC trusted publishing (no token needed) |
+| **GitHub Releases** | Archives (tar.gz/zip) with SHA-256 checksums |
+| **PyPI** | Maturin wheels with OIDC trusted publishing |
 | **npm** | Platform-specific packages (esbuild pattern) |
-| **Homebrew** | Formula in your tap repo, auto-updated via repository-dispatch |
-| **crates.io** | `cargo publish` |
+| **Homebrew** | Formula in your tap repo, auto-updated on release |
+| **crates.io** | Standard `cargo publish` |
 | **cargo-binstall** | Metadata for pre-built binary installs |
-| **Install scripts** | `curl -sSL url \| sh` (unix) + `irm url \| iex` (windows) |
+| **Install scripts** | `curl \| sh` for unix, `irm \| iex` for Windows |
 
 ## Configuration
 
-Everything is driven by `bincast.toml`:
+All configuration lives in `bincast.toml`:
 
 ```toml
 [package]
@@ -109,7 +115,7 @@ release = true
 
 [distribute.pypi]
 package_name = "my-tool"
-auth = "oidc"                    # no token needed
+auth = "oidc"
 
 [distribute.npm]
 scope = "@my-org"
@@ -126,26 +132,19 @@ enabled = true
 
 Supports Cargo workspaces, multiple binaries, and custom target triples.
 
-## AI Agent Integration
-
-bincast ships as an [APM](https://github.com/microsoft/apm) package with skills that teach AI agents (Claude Code, Copilot, Cursor, Codex) how to set up and release your project.
+## Install
 
 ```bash
-apm install benelser/bincast
+brew install benelser/bincast/bincast
 ```
 
-This installs 6 skills:
+```bash
+cargo install bincast
+```
 
-| Skill | What the agent learns |
-|-------|----------------------|
-| `bincast-shared` | Installation, config format, all commands |
-| `bincast-init` | Project setup with `--channels` flags |
-| `bincast-release` | Version bump + tag (solo and team flows) |
-| `bincast-add-channel` | Add distribution channels step-by-step |
-| `bincast-setup-secrets` | Create tokens and set GitHub secrets (browser-assisted) |
-| `bincast-troubleshoot` | Diagnose CI failures with fixes |
-
-The agent reads the skills, installs bincast if needed, asks you how people should install your tool, and runs `bincast init --channels ... --yes` non-interactively.
+```bash
+curl -sSL https://raw.githubusercontent.com/benelser/bincast/main/install.sh | sh
+```
 
 ## License
 

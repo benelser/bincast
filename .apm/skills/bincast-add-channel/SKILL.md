@@ -2,7 +2,7 @@
 name: bincast-add-channel
 description: "Bincast: Add a distribution channel to an existing project."
 metadata:
-  version: 0.1.1
+  version: 0.2.0
   openclaw:
     category: "recipe"
     domain: "devtools"
@@ -15,59 +15,50 @@ metadata:
 
 # Add a Distribution Channel
 
-> **PREREQUISITE:** Project must already have `bincast.toml` (run `bincast init` first).
-
-## Available Channels
-
-| Channel | Config section | What it needs |
-|---------|---------------|---------------|
-| PyPI | `[distribute.pypi]` | `package_name`, `PYPI_TOKEN` secret |
-| npm | `[distribute.npm]` | `scope`, `NPM_TOKEN` secret |
-| Homebrew | `[distribute.homebrew]` | `tap` repo, `TAP_GITHUB_TOKEN` secret |
-| crates.io | `[distribute.cargo]` | `crate_name`, `CARGO_REGISTRY_TOKEN` secret |
-| Install scripts | `[distribute.install_script]` | Nothing extra |
+> **Prerequisite:** Project must have `bincast.toml` (run `bincast init` first).
 
 ## Steps
 
-1. Ask the user which channel to add
+1. **Ask** which channel to add
 
-2. Edit `bincast.toml` — add the appropriate section:
+2. **Edit `bincast.toml`** to add the channel section:
 
-```toml
-# Example: adding PyPI
-[distribute.pypi]
-package_name = "my-tool"
-```
+| Channel | Config to add |
+|---------|---------------|
+| PyPI | `[distribute.pypi]` with `package_name` and optionally `auth = "oidc"` |
+| npm | `[distribute.npm]` with `scope` |
+| Homebrew | `[distribute.homebrew]` with `tap` |
+| crates.io | `[distribute.cargo]` with `crate_name` |
+| Install scripts | `[distribute.install_script]` with `enabled = true` |
 
-3. Regenerate CI and distribution files:
+3. **Regenerate** CI and distribution files:
+
 ```bash
 bincast generate
 ```
 
+4. **Create supporting infrastructure** if needed:
+
 ```bash
-gh repo create owner/homebrew-my-tool --private
+# Homebrew: create the tap repo
+gh repo create owner/homebrew-my-tool --public
+
+# crates.io: verify email at https://crates.io/settings/profile
 ```
 
-5. Set the required secret:
-```bash
-gh secret set PYPI_TOKEN --repo owner/repo
-```
+5. **Set up secrets** for the new channel (see `bincast-setup-secrets`)
 
-6. Commit the changes:
+6. **Commit** the changes:
+
 ```bash
 git add bincast.toml .github/workflows/release.yml
-git commit -m "add PyPI distribution"
+git commit -m "add [channel] distribution"
 ```
 
-7. Verify: `bincast check`
+7. **Verify:** `bincast check`
 
-## Tips
+## Notes
 
-- Always run `bincast generate` after editing `bincast.toml` — it regenerates the CI workflow.
-- For private repos, Homebrew taps need `HOMEBREW_GITHUB_API_TOKEN` on the client side.
-- crates.io requires a verified email at https://crates.io/settings/profile.
-
-## See Also
-
-- `../bincast-shared/SKILL.md` — full config reference
-- `../bincast-release/SKILL.md` — release after adding channel
+- Always run `bincast generate` after editing `bincast.toml` to regenerate the CI workflow.
+- PyPI with `auth = "oidc"` uses trusted publishing and requires no token. Configure the trusted publisher on pypi.org instead.
+- Homebrew taps require a fine-grained GitHub PAT with `Contents: Read and write` on the tap repo only.

@@ -1,8 +1,8 @@
 ---
 name: bincast-release
-description: "Bincast: Release a new version of your project."
+description: "Bincast: Bump version and release a new version of your project."
 metadata:
-  version: 0.1.1
+  version: 0.2.0
   openclaw:
     category: "recipe"
     domain: "devtools"
@@ -16,75 +16,54 @@ metadata:
 
 # Release a New Version
 
-> **PREREQUISITE:** Read `../bincast-shared/SKILL.md` for conventions.
-
-Guide the user through releasing a new version. Two composable commands:
-- `bincast version` — bumps the version
-- `bincast release` — tags and pushes
+> **Prerequisite:** Project has `bincast.toml` and secrets are configured.
 
 ## Pre-checks
 
-1. Must be on `main` or `master` branch
-2. Working tree must be clean (all changes committed)
+1. Working tree must be clean (`git status`)
+2. Must be on `main` or `master` branch (for `bincast release`)
 3. `bincast check` should pass
 
-## Solo Developer Flow
+## Solo developer flow
 
 ```bash
-# 1. Validate
-bincast check
-
-# 2. Ask the user: what kind of release?
-#    patch (bug fixes), minor (new features), major (breaking changes)
-bincast version patch    # or minor, or major
-
-# 3. Tag and push
-bincast release
+bincast check                # validate setup
+bincast version patch        # bump, commit (or minor / major)
+bincast release              # tag, push — CI handles the rest
 ```
 
-That's it. CI handles building, packaging, and publishing to all channels.
-
-## Team Flow (branch protection on main)
+## Team flow (branch protection)
 
 ```bash
-# 1. On a feature or release branch:
+# On a feature branch:
 bincast version patch
+# Open PR, get review, merge
 
-# 2. Open a PR with the version bump
-#    PR title: "release v0.X.Y"
-#    Get review, merge to main
-
-# 3. After merge, on main:
+# After merge, on main:
 git checkout main && git pull
 bincast release
 ```
 
-## What `bincast version` Does
+## What each command does
 
-- Reads current version from `Cargo.toml`
-- Bumps according to semver (patch/minor/major)
-- Updates `Cargo.toml`
-- For workspaces: updates `workspace.package.version`
-- Commits: `release v{new_version}`
+**`bincast version patch|minor|major`**
+- Reads the current version from `Cargo.toml`
+- Bumps it according to semver
+- Updates `Cargo.toml` (and `workspace.package.version` if applicable)
+- Commits with message `release v{version}`
 
-## What `bincast release` Does
-
+**`bincast release`**
 - Reads version from `Cargo.toml`
-- Pre-flight checks (on main, clean tree, tag doesn't exist)
-- Creates git tag `v{version}`
-- Pushes commit + tag to origin
-- Prints CI link
+- Checks: on main/master, clean tree, tag doesn't already exist, CI workflow present
+- Creates tag `v{version}`, pushes commit and tag
+- CI builds for all targets and publishes to configured channels
 
-## If Something Goes Wrong
+## Recovery
 
-- Tag already exists: `bincast version patch` to bump, then retry
-- CI fails: see `../bincast-troubleshoot/SKILL.md`
-- Wrong version tagged: `git tag -d v0.X.Y && git push origin :refs/tags/v0.X.Y`
+| Problem | Fix |
+|---------|-----|
+| Tag already exists | `bincast version patch` to bump, then retry |
+| CI fails | See `bincast-troubleshoot` |
+| Wrong version tagged | `git tag -d vX.Y.Z && git push origin :refs/tags/vX.Y.Z`, then re-release |
 
-> [!CAUTION]
-> `bincast release` creates a git tag and pushes it. This triggers CI which publishes to registries. Confirm the version with the user before running.
-
-## See Also
-
-- `../bincast-troubleshoot/SKILL.md` — diagnose CI failures
-- `../bincast-add-channel/SKILL.md` — add distribution channels
+> **Caution:** `bincast release` pushes a tag that triggers CI publishing to registries. Always confirm the version with the user before running.
