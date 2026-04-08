@@ -45,7 +45,24 @@ Only set up missing secrets.
 
 ## PyPI OIDC trusted publishing
 
-If `auth = "oidc"` is configured, no `PYPI_TOKEN` is needed. Instead, configure a trusted publisher on PyPI:
+If `auth = "oidc"` is configured, no `PYPI_TOKEN` is needed. Two setup steps are required:
+
+### Step 1: Create a GitHub environment
+
+The generated workflow uses `environment: name: pypi`. This environment must exist in the GitHub repo:
+
+1. Go to `https://github.com/OWNER/REPO/settings/environments`
+2. Click **New environment**
+3. Name it `pypi` (must match exactly)
+4. Save — no additional protection rules needed
+
+Or via CLI:
+
+```bash
+gh api repos/OWNER/REPO/environments/pypi -X PUT
+```
+
+### Step 2: Add a trusted publisher on PyPI
 
 1. Go to `https://pypi.org/manage/project/PACKAGE_NAME/settings/publishing/`
 2. Select **GitHub Actions** as the publisher
@@ -53,10 +70,10 @@ If `auth = "oidc"` is configured, no `PYPI_TOKEN` is needed. Instead, configure 
    - **Owner:** GitHub username or org
    - **Repository:** repo name (without owner prefix)
    - **Workflow name:** `release.yml`
-   - **Environment name:** `pypi` (must match exactly — the generated workflow uses this environment)
+   - **Environment name:** `pypi`
 4. Save
 
-The environment name on PyPI **must match** the `environment: name:` in the generated workflow. bincast generates `pypi` as the environment name. If they don't match, the OIDC token exchange will fail.
+The environment name on PyPI must match the GitHub environment name. bincast uses `pypi` for both.
 
 The CI workflow already has `id-token: write` permission and uses `pypa/gh-action-pypi-publish` for automatic OIDC token exchange.
 

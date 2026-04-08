@@ -421,12 +421,11 @@ pub fn handle_secrets(config: &ReleaserConfig, det: &Detection) {
     if let Some(pypi) = &config.distribute.pypi {
         if pypi.uses_oidc() {
             eprintln!("    ✓ PyPI — OIDC trusted publishing (no token needed)");
-            eprintln!("      Configure at: https://pypi.org/manage/project/{}/settings/publishing/", pypi.package_name);
-            eprintln!("      Add trusted publisher: GitHub Actions");
-            eprintln!("        Owner: your GitHub username/org");
-            eprintln!("        Repository: your repo name");
-            eprintln!("        Workflow: release.yml");
-            eprintln!("        Environment: pypi  (must match exactly)");
+            eprintln!("      1. Create GitHub environment 'pypi':");
+            eprintln!("         gh api repos/{}/{}/environments/pypi -X PUT", det.owner, det.repo_name);
+            eprintln!("      2. Add trusted publisher on PyPI:");
+            eprintln!("         https://pypi.org/manage/project/{}/settings/publishing/", pypi.package_name);
+            eprintln!("         Owner: {}, Repo: {}, Workflow: release.yml, Environment: pypi", det.owner, det.repo_name);
         } else {
             secrets_needed.push(SecretInfo {
                 name: "PYPI_TOKEN",
