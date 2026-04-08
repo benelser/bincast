@@ -113,6 +113,7 @@ pub fn render(gctx: &GenerateContext) -> Result<String, String> {
         c.set("is_musl", t.is_musl());
         c.set("npm_os", t.npm_os());
         c.set("npm_cpu", t.npm_cpu());
+        c.set("manylinux", t.manylinux());
         c
     }).collect();
     ctx.set_list("targets", targets);
@@ -143,7 +144,8 @@ jobs:
         include:
 {% for t in targets %}          - target: {{ t.triple }}
             runner: {{ t.runner }}
-{% endfor %}
+{% if has_pypi %}            manylinux: {{ t.manylinux }}
+{% endif %}{% endfor %}
     steps:
       - uses: {{ action_checkout }}
 
@@ -201,7 +203,7 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: --release --bindings bin --strip
-          manylinux: auto
+          manylinux: ${{ matrix.manylinux }}
 {% endif %}
       - name: Compute SHA-256
         shell: bash

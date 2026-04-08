@@ -212,6 +212,82 @@ fn test_generated_ci_passes_workflow_validation() {
 }
 
 #[test]
+fn test_generated_ci_has_correct_manylinux_per_target() {
+    let (dir, files) = setup_and_generate(fixture_config());
+    let ci = files.iter().find(|f| f.path.ends_with("release.yml")).unwrap();
+
+    // aarch64-unknown-linux-gnu needs manylinux: 2_28 for cross-compilation container
+    // Parse matrix entries — each target should have the right manylinux value
+    let lines: Vec<&str> = ci.content.lines().collect();
+    for (i, line) in lines.iter().enumerate() {
+        if line.contains("- target: aarch64-unknown-linux-gnu") {
+            let next = lines[i + 1..].iter().take(3).collect::<Vec<_>>();
+            let manylinux_line = next.iter().find(|l| l.contains("manylinux:"));
+            assert!(manylinux_line.is_some(), "aarch64-unknown-linux-gnu missing manylinux in matrix");
+            assert!(
+                manylinux_line.unwrap().contains("2_28"),
+                "aarch64-unknown-linux-gnu should use manylinux 2_28, got: {}",
+                manylinux_line.unwrap()
+            );
+        }
+        if line.contains("- target: x86_64-unknown-linux-musl") {
+            let next = lines[i + 1..].iter().take(3).collect::<Vec<_>>();
+            let manylinux_line = next.iter().find(|l| l.contains("manylinux:"));
+            assert!(manylinux_line.is_some(), "x86_64-unknown-linux-musl missing manylinux in matrix");
+            assert!(
+                manylinux_line.unwrap().contains("musllinux_1_2"),
+                "x86_64-unknown-linux-musl should use musllinux_1_2, got: {}",
+                manylinux_line.unwrap()
+            );
+        }
+        if line.contains("- target: x86_64-unknown-linux-gnu") {
+            let next = lines[i + 1..].iter().take(3).collect::<Vec<_>>();
+            let manylinux_line = next.iter().find(|l| l.contains("manylinux:"));
+            assert!(manylinux_line.is_some(), "x86_64-unknown-linux-gnu missing manylinux in matrix");
+            assert!(
+                manylinux_line.unwrap().contains("auto"),
+                "x86_64-unknown-linux-gnu should use manylinux auto, got: {}",
+                manylinux_line.unwrap()
+            );
+        }
+    }
+
+    // The maturin step should use matrix.manylinux, not hardcoded 'auto'
+    assert!(
+        ci.content.contains("manylinux: ${{ matrix.manylinux }}"),
+        "maturin step should use matrix.manylinux"
+    );
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn test_github_only_ci_has_no_manylinux_in_matrix() {
+    let config = r#"
+[package]
+name = "simple"
+binary = "simple"
+repository = "https://github.com/user/simple"
+
+[targets]
+platforms = ["x86_64-unknown-linux-gnu", "aarch64-apple-darwin"]
+
+[distribute.github]
+release = true
+"#;
+    let (dir, files) = setup_and_generate(config);
+    let ci = files.iter().find(|f| f.path.ends_with("release.yml")).unwrap();
+
+    // Without PyPI, no manylinux should appear in matrix
+    assert!(
+        !ci.content.contains("manylinux:"),
+        "github-only config should not have manylinux in matrix"
+    );
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn test_github_only_ci_passes_workflow_validation() {
     let config = r#"
 [package]

@@ -158,6 +158,22 @@ impl TargetTriple {
     pub fn is_musl(&self) -> bool {
         self.0.contains("musl")
     }
+
+    /// Manylinux compatibility tag for maturin-action.
+    /// Cross-arch Linux targets need explicit values so maturin-action
+    /// pulls the correct cross-compilation container from ghcr.io/rust-cross/.
+    pub fn manylinux(&self) -> &str {
+        if self.os() != "linux" {
+            return "auto";
+        }
+        if self.is_musl() {
+            return "musllinux_1_2";
+        }
+        match self.arch() {
+            "aarch64" => "2_28",
+            _ => "auto",
+        }
+    }
 }
 
 impl std::fmt::Display for TargetTriple {
