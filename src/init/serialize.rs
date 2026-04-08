@@ -44,6 +44,9 @@ pub fn serialize_config(config: &ReleaserConfig) -> String {
     }
     if let Some(pypi) = &config.distribute.pypi {
         out.push_str(&format!("\n[distribute.pypi]\npackage_name = \"{}\"\n", pypi.package_name));
+        if let Some(auth) = &pypi.auth {
+            out.push_str(&format!("auth = \"{auth}\"\n"));
+        }
     }
     if let Some(npm) = &config.distribute.npm {
         out.push_str(&format!("\n[distribute.npm]\nscope = \"{}\"\n", npm.scope));
@@ -91,7 +94,7 @@ mod tests {
             },
             distribute: DistributeConfig {
                 github: Some(GitHubConfig { release: true }),
-                pypi: Some(PyPIConfig { package_name: "durable".into() }),
+                pypi: Some(PyPIConfig { package_name: "durable".into(), auth: Some("oidc".into()) }),
                 npm: Some(NpmConfig { scope: "@durable".into(), package_name: Some("cli".into()) }),
                 homebrew: Some(HomebrewConfig { tap: "benelser/homebrew-durable".into() }),
                 cargo: Some(CargoConfig { crate_name: "durable-runtime".into() }),

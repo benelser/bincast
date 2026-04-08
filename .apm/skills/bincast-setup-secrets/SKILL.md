@@ -30,10 +30,28 @@ Read `bincast.toml` and check which channels are enabled:
 | Channel in config | Secret needed | Create at |
 |---|---|---|
 | `[distribute.cargo]` | `CARGO_REGISTRY_TOKEN` | https://crates.io/settings/tokens |
-| `[distribute.pypi]` | `PYPI_TOKEN` | https://pypi.org/manage/account/token/ |
-| `[distribute.npm]` | `NPM_TOKEN` | https://www.npmjs.com/settings/~/tokens |
+| `[distribute.pypi]` with `auth = "token"` | `PYPI_TOKEN` | https://pypi.org/manage/account/token/ |
+| `[distribute.pypi]` with `auth = "oidc"` | **None** — configure trusted publisher on PyPI | https://docs.pypi.org/trusted-publishers/ |
+| `[distribute.npm]` | `NPM_TOKEN` | https://www.npmjs.com/settings/~/tokens/granular-access-tokens/new |
 | `[distribute.homebrew]` | `TAP_GITHUB_TOKEN` | https://github.com/settings/personal-access-tokens/new |
 | `[distribute.github]` | `GITHUB_TOKEN` | **Automatic** — no action needed |
+
+### PyPI OIDC Trusted Publishing (recommended)
+
+If `bincast.toml` has `auth = "oidc"` under `[distribute.pypi]`, no PYPI_TOKEN is needed. Instead:
+
+1. Go to: `https://pypi.org/manage/project/PACKAGE_NAME/settings/publishing/`
+2. Under "Add a new publisher", select **GitHub Actions**
+3. Fill in:
+   - Owner: your GitHub username/org
+   - Repository: your repo name
+   - Workflow name: `release.yml`
+   - Environment: `pypi` (or leave blank)
+4. Click "Add"
+
+That's it. The CI workflow already has `id-token: write` permission and uses `pypa/gh-action-pypi-publish` which handles the OIDC token exchange automatically.
+
+Docs: https://docs.pypi.org/trusted-publishers/
 
 Check which are already set:
 ```bash

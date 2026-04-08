@@ -184,6 +184,14 @@ pub struct GitHubConfig {
 #[derive(Debug, Clone)]
 pub struct PyPIConfig {
     pub package_name: String,
+    /// "oidc" (trusted publishing, no token) or "token" (PYPI_TOKEN secret)
+    pub auth: Option<String>,
+}
+
+impl PyPIConfig {
+    pub fn uses_oidc(&self) -> bool {
+        self.auth.as_deref() == Some("oidc")
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -329,6 +337,7 @@ impl DistributeConfig {
                     .get_str("package_name")
                     .ok_or_else(|| Error::Config("distribute.pypi.package_name is required".into()))?
                     .to_string(),
+                auth: v.get_str("auth").map(|s| s.to_string()),
             })
         }).transpose()?;
 

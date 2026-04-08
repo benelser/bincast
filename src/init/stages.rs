@@ -250,7 +250,7 @@ pub fn build_config(det: &Detection, ch: &ChannelConfig) -> ReleaserConfig {
         config.distribute.install_script = Some(InstallScriptConfig { enabled: true });
     }
     if let Some(name) = &ch.pypi_name {
-        config.distribute.pypi = Some(PyPIConfig { package_name: name.clone() });
+        config.distribute.pypi = Some(PyPIConfig { package_name: name.clone(), auth: Some("oidc".into()) });
     }
     if let Some(scope) = &ch.npm_scope {
         config.distribute.npm = Some(NpmConfig { scope: scope.clone(), package_name: None });
@@ -421,12 +421,18 @@ pub fn handle_secrets(config: &ReleaserConfig, det: &Detection) {
             instructions: "    1. Verify your email at: https://crates.io/settings/profile\n    2. Create token at: https://crates.io/settings/tokens\n       Scopes: publish-new, publish-update".into(),
         });
     }
-    if config.distribute.pypi.is_some() {
-        secrets_needed.push(SecretInfo {
-            name: "PYPI_TOKEN",
-            url: "https://pypi.org/manage/account/token/",
-            instructions: "    Create at: https://pypi.org/manage/account/token/\n    Scope: Entire account (or project-scoped)".into(),
-        });
+    if let Some(pypi) = &config.distribute.pypi {
+        if pypi.uses_oidc() {
+            eprintln!("    ✓ PyPI — OIDC trusted publishing (no token needed)");
+            eprintln!("      Configure at: https://pypi.org/manage/project/{}/settings/publishing/", pypi.package_name);
+            eprintln!("      Add trusted publisher: GitHub, owner, repo, workflow: release.yml");
+        } else {
+            secrets_needed.push(SecretInfo {
+                name: "PYPI_TOKEN",
+                url: "https://pypi.org/manage/account/token/",
+                instructions: "    Create at: https://pypi.org/manage/account/token/\n    Scope: Entire account (or project-scoped)\n    Tip: use auth = \"oidc\" in bincast.toml to avoid tokens entirely".into(),
+            });
+        }
     }
     if config.distribute.npm.is_some() {
         secrets_needed.push(SecretInfo {
