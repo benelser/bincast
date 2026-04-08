@@ -320,7 +320,7 @@ jobs:
             unzip -o "artifacts/{{ name }}-{{ t.triple }}.zip" -d "npm-{{ t.npm_os }}-{{ t.npm_cpu }}/bin/"
           fi
           cat > "npm-{{ t.npm_os }}-{{ t.npm_cpu }}/package.json" << PKGJSON
-          {"name":"{{ npm_scope }}/{{ binary }}-{{ t.npm_os }}-{{ t.npm_cpu }}","version":"${VERSION}","os":["{{ t.npm_os }}"],"cpu":["{{ t.npm_cpu }}"],"bin":{"{{ binary }}":"bin/{{ binary }}{{ t.binary_ext }}"},"preferUnplugged":true}
+          {"name":"{{ npm_scope }}/{{ binary }}-{{ t.npm_os }}-{{ t.npm_cpu }}","version":"${VERSION}","os":["{{ t.npm_os }}"],"cpu":["{{ t.npm_cpu }}"],"bin":{"{{ binary }}":"bin/{{ binary }}{{ t.binary_ext }}"},"repository":{"type":"git","url":"https://github.com/{{ owner }}/{{ repo }}"},"preferUnplugged":true}
           PKGJSON
           cd "npm-{{ t.npm_os }}-{{ t.npm_cpu }}" && npm publish --provenance --access public && cd ..
 {% endfor %}
