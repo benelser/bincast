@@ -4,7 +4,7 @@ Ship your Rust binary to every package manager with one command.
 
 ## Get Started
 
-The fastest way to set up bincast is with an AI agent. Install the skill package and ask your agent to set up releases:
+The fastest way to set up bincast is with an AI agent. Install the [APM](https://microsoft.github.io/apm/getting-started/quick-start/) skill package and ask your agent to set up releases:
 
 ```bash
 apm install benelser/bincast
