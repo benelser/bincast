@@ -258,6 +258,13 @@ fn test_generated_ci_has_correct_manylinux_per_target() {
         "maturin step should use matrix.manylinux"
     );
 
+    // Linker env vars must NOT be in $GITHUB_ENV — they leak into maturin's Docker container
+    // and reference a binary that doesn't exist inside the container
+    assert!(
+        !ci.content.contains(">> $GITHUB_ENV"),
+        "linker env vars must not be written to $GITHUB_ENV (leaks into maturin Docker container)"
+    );
+
     let _ = fs::remove_dir_all(&dir);
 }
 
