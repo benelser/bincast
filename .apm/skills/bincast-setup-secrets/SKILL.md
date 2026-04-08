@@ -64,13 +64,26 @@ gh api repos/OWNER/REPO/environments/pypi -X PUT
 
 ### Step 2: Add a trusted publisher on PyPI
 
-1. Go to `https://pypi.org/manage/project/PACKAGE_NAME/settings/publishing/`
-2. Select **GitHub Actions** as the publisher
-3. Fill in:
+**First release (project doesn't exist on PyPI yet):**
+
+Use a pending publisher — PyPI lets you register trust before the project exists:
+
+1. Go to `https://pypi.org/manage/account/publishing/`
+2. Under **Add a new pending publisher**, fill in:
+   - **Project name:** your PyPI package name (from `bincast.toml`)
    - **Owner:** GitHub username or org
    - **Repository:** repo name (without owner prefix)
    - **Workflow name:** `release.yml`
    - **Environment name:** `pypi`
+3. Save
+
+The first publish from CI will automatically create the project on PyPI and claim the name.
+
+**Existing project (already published to PyPI):**
+
+1. Go to `https://pypi.org/manage/project/PACKAGE_NAME/settings/publishing/`
+2. Select **GitHub Actions** as the publisher
+3. Fill in the same fields: owner, repository, `release.yml`, `pypi`
 4. Save
 
 The environment name on PyPI must match the GitHub environment name. bincast uses `pypi` for both.
