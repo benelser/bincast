@@ -2,41 +2,90 @@
 
 Ship your Rust binary to every package manager with one command.
 
-```bash
-bincast publish v0.1.0
-```
-
-Your binary is now available via:
+## Install
 
 ```bash
-pip install your-tool         # PyPI
-npm install your-tool         # npm
-brew install your-tool        # Homebrew
-cargo install your-tool       # crates.io
-cargo binstall your-tool      # pre-built binary
-curl -sSL url | sh            # macOS/Linux
-irm url | iex                 # Windows
+brew install benelser/bincast/bincast
+# or
+cargo install bincast
+# or
+curl -sSL https://raw.githubusercontent.com/benelser/bincast/main/install.sh | sh
 ```
 
 ## Quick Start
 
 ```bash
-cargo install bincast
-bincast init
-bincast generate
-git add . && git commit -m "add release infrastructure"
-git tag v0.1.0 && git push --tags
+bincast init                    # set up distribution channels
+bincast version patch           # bump version
+bincast release                 # tag, push, CI does the rest
+```
+
+That's it. Your binary is now available via:
+
+```bash
+pip install your-tool           # PyPI
+npm install @org/your-tool      # npm
+brew install you/tap/your-tool  # Homebrew
+cargo install your-tool         # crates.io
+cargo binstall your-tool        # pre-built binary
+curl -sSL url | sh              # macOS/Linux
+irm url | iex                   # Windows
 ```
 
 ## How It Works
 
-### 1. Initialize
+### Initialize
 
 ```bash
 bincast init
 ```
 
-Reads your `Cargo.toml` and writes a `bincast.toml`:
+Interactive wizard that detects your project, asks how people should install it, and generates everything — config, CI workflow, install scripts, Homebrew formula, cargo-binstall metadata. Creates Homebrew tap repos automatically via `gh`. Guides you through setting up secrets.
+
+Or non-interactive for AI agents:
+
+```bash
+bincast init --channels github,pypi,cargo,homebrew,install-scripts --npm-scope @myorg --yes
+```
+
+### Release
+
+Two composable commands:
+
+```bash
+bincast version patch    # bumps Cargo.toml, commits
+bincast release          # tags current version, pushes, CI builds + publishes
+```
+
+`version` decides WHAT to release. `release` executes it. They compose.
+
+For teams with branch protection:
+- Developer runs `bincast version patch` on a feature branch, includes it in PR
+- After merge, release lead runs `bincast release` on main
+
+### Validate
+
+```bash
+bincast check
+```
+
+Validates config, checks name availability on registries, verifies tokens are set.
+
+## Channels
+
+| Channel | What bincast produces |
+|---------|----------------------|
+| **GitHub Releases** | Archives (tar.gz/zip) + SHA-256 checksums |
+| **PyPI** | maturin wheels, OIDC trusted publishing (no token needed) |
+| **npm** | Platform-specific packages (esbuild pattern) |
+| **Homebrew** | Formula in your tap repo, auto-updated via repository-dispatch |
+| **crates.io** | `cargo publish` |
+| **cargo-binstall** | Metadata for pre-built binary installs |
+| **Install scripts** | `curl -sSL url \| sh` (unix) + `irm url \| iex` (windows) |
+
+## Configuration
+
+Everything is driven by `bincast.toml`:
 
 ```toml
 [package]
@@ -60,13 +109,13 @@ release = true
 
 [distribute.pypi]
 package_name = "my-tool"
+auth = "oidc"                    # no token needed
 
 [distribute.npm]
 scope = "@my-org"
 
 [distribute.homebrew]
 tap = "you/homebrew-my-tool"
-
 
 [distribute.cargo]
 crate_name = "my-tool"
@@ -75,72 +124,28 @@ crate_name = "my-tool"
 enabled = true
 ```
 
-### 2. Generate
+Supports Cargo workspaces, multiple binaries, and custom target triples.
+
+## AI Agent Integration
+
+bincast ships as an [APM](https://github.com/microsoft/apm) package with skills that teach AI agents (Claude Code, Copilot, Cursor, Codex) how to set up and release your project.
 
 ```bash
-bincast generate
+apm install benelser/bincast
 ```
 
-Produces everything you need, ready to commit:
+This installs 6 skills:
 
-```
-Generated:
-  .github/workflows/release.yml     CI workflow (actions pinned to SHAs)
-  install.sh                         macOS/Linux installer
-  install.ps1                        Windows installer
-  homebrew/my-tool.rb                Homebrew formula
-  binstall.toml                      cargo-binstall metadata
-```
+| Skill | What the agent learns |
+|-------|----------------------|
+| `bincast-shared` | Installation, config format, all commands |
+| `bincast-init` | Project setup with `--channels` flags |
+| `bincast-release` | Version bump + tag (solo and team flows) |
+| `bincast-add-channel` | Add distribution channels step-by-step |
+| `bincast-setup-secrets` | Create tokens and set GitHub secrets (browser-assisted) |
+| `bincast-troubleshoot` | Diagnose CI failures with fixes |
 
-
-### 3. Publish
-
-Tag and push. The generated workflow does everything else.
-
-```bash
-git tag v0.1.0
-git push --tags
-```
-
-Or publish locally:
-
-```bash
-bincast publish v0.1.0
-```
-
-
-### 4. Validate
-
-```bash
-bincast check
-```
-
-Validates config syntax, checks name availability on PyPI/npm/crates.io, and verifies your setup before you tag.
-
-## Channels
-
-| Channel | What bincast produces |
-|---------|----------------------|
-| **GitHub Releases** | Archives (tar.gz/zip) + SHA-256 checksums + SLSA attestation |
-| **PyPI** | maturin wheels with `bindings = "bin"`, OIDC trusted publishing |
-| **npm** | Platform-specific packages (esbuild pattern) |
-| **Homebrew** | Formula in your tap repo, auto-updated via repository-dispatch |
-| **crates.io** | `cargo publish` |
-| **cargo-binstall** | Metadata for pre-built binary installs |
-| **Install scripts** | `curl -sSL url \| sh` (unix) + `irm url \| iex` (windows) |
-
-## Performance
-
-| Metric | Value |
-|---|---|
-| Binary size (stripped) | 599 KB |
-| Dependencies | **0** |
-| Startup time | <1ms |
-| Memory usage | 1.5 MB |
-| Generate (all channels) | 6ms |
-| Test suite (215 tests) | 0.5s |
-
-Zero dependencies means zero supply chain surface. The tool that secures your release pipeline has nothing to audit but its own code.
+The agent reads the skills, installs bincast if needed, asks you how people should install your tool, and runs `bincast init --channels ... --yes` non-interactively.
 
 ## License
 
