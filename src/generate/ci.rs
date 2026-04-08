@@ -271,6 +271,7 @@ jobs:
       name: pypi
       url: https://pypi.org/project/{{ pypi_package }}
     permissions:
+      contents: read
       id-token: write
     steps:
       - uses: {{ action_download_artifact }}
@@ -289,6 +290,7 @@ jobs:
     needs: [release]
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       id-token: write
     steps:
       - uses: {{ action_checkout }}
