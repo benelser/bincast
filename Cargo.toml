@@ -11,3 +11,14 @@ rustls = { version = "0.23", default-features = false, features = ["std", "tls12
 webpki-roots = "1"
 
 [dev-dependencies]
+
+[package.metadata.binstall]
+pkg-url = "https://github.com/benelser/bincast/releases/download/v{{ version }}/bincast-{{ target }}{{ archive-suffix }}"
+bin-dir = "bincast{{ binary-ext }}"
+pkg-fmt = "tgz"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"
+
+[package.metadata.binstall.overrides.aarch64-pc-windows-msvc]
+pkg-fmt = "zip"

@@ -109,6 +109,17 @@ pub fn run_with_flags(project_dir: &Path, flags: InitFlags) -> Result<()> {
         .map_err(|e| Error::Config(format!("generate failed: {e}")))?;
     eprintln!("  ✓ Generated {} files", files.len());
 
+    // Inject cargo-binstall metadata into Cargo.toml
+    let (owner, repo) = crate::cargo::parse_github_url(&config.package.repository)
+        .unwrap_or((&detection.owner, &detection.repo_name));
+    match crate::package::binstall::inject_into_cargo_toml(
+        &cargo_path, owner, repo, &config.package.binary,
+    ) {
+        Ok(true) => eprintln!("  ✓ Added cargo-binstall metadata to Cargo.toml"),
+        Ok(false) => eprintln!("  ✓ cargo-binstall metadata already in Cargo.toml"),
+        Err(e) => eprintln!("  ! Failed to update Cargo.toml: {e}"),
+    }
+
     if let Some(tap) = &channel_config.homebrew_tap {
         stages::create_repo_if_needed(tap, &detection.gh_available);
     }

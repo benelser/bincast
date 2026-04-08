@@ -213,8 +213,6 @@ fn configure_custom(det: &Detection) -> Result<ChannelConfig> {
         None
     };
 
-    eprintln!("    cargo-binstall         [always on]");
-
     Ok(ChannelConfig {
         install_scripts: install,
         pypi_name: pypi,
@@ -299,7 +297,6 @@ fn count_channels(config: &ReleaserConfig) -> usize {
     if config.distribute.npm.is_some() { n += 1; }
     if config.distribute.homebrew.is_some() { n += 1; }
     if config.distribute.cargo.is_some() { n += 1; }
-    n += 1; // binstall always
     n
 }
 
@@ -381,7 +378,7 @@ pub fn git_commit(project_dir: &Path) {
     }
 
     let _ = Command::new("git")
-        .args(["add", "bincast.toml", ".github/", "install.sh", "install.ps1", "binstall.toml", "homebrew/"])
+        .args(["add", "bincast.toml", "Cargo.toml", "Cargo.lock", ".github/", "install.sh", "install.ps1", "homebrew/"])
         .current_dir(project_dir)
         .output();
 

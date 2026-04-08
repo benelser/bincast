@@ -57,19 +57,6 @@ pub fn run(config: &ReleaserConfig, output_dir: &Path) -> Result<Vec<GeneratedFi
         });
     }
 
-    // cargo-binstall metadata snippet
-    let binstall = crate::package::binstall::binstall_metadata(
-        &ctx.owner,
-        &ctx.repo,
-        &config.package.binary,
-    );
-    files.push(GeneratedFile {
-        path: "binstall.toml".into(),
-        content: format!(
-            "# Add this to your Cargo.toml for cargo-binstall support:\n\n{binstall}"
-        ),
-    });
-
     // Write files to disk
     for file in &files {
         let full_path = output_dir.join(&file.path);

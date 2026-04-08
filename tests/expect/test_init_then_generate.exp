@@ -20,7 +20,6 @@ set expected_files {
     ".github/workflows/release.yml"
     "install.sh"
     "install.ps1"
-    "binstall.toml"
 }
 
 foreach f $expected_files {

@@ -82,7 +82,6 @@ EXPECTED_FILES=(
     ".github/workflows/release.yml"
     "install.sh"
     "install.ps1"
-    "binstall.toml"
 )
 
 for f in "${EXPECTED_FILES[@]}"; do
