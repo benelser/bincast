@@ -87,7 +87,6 @@ pub fn render(gctx: &GenerateContext) -> Result<String, String> {
     ctx.set("has_npm", gctx.config.distribute.npm.is_some());
     ctx.set("has_cargo", gctx.config.distribute.cargo.is_some());
     ctx.set("has_homebrew", gctx.config.distribute.homebrew.is_some());
-    ctx.set("has_scoop", gctx.config.distribute.scoop.is_some());
     // Attestation requires public repos — disable by default, users can enable
     ctx.set("has_attestation", false);
 
@@ -99,9 +98,6 @@ pub fn render(gctx: &GenerateContext) -> Result<String, String> {
     }
     if let Some(homebrew) = &gctx.config.distribute.homebrew {
         ctx.set("homebrew_tap", homebrew.tap.as_str());
-    }
-    if let Some(scoop) = &gctx.config.distribute.scoop {
-        ctx.set("scoop_bucket", scoop.bucket.as_str());
     }
 
     // Targets
@@ -346,18 +342,5 @@ jobs:
           token: ${{ secrets.TAP_GITHUB_TOKEN }}
           repository: {{ homebrew_tap }}
           event-type: update-formula
-          client-payload: '{"version": "${{ github.ref_name }}"}'
-{% endif %}{% if has_scoop %}
-  dispatch-scoop:
-    name: Update Scoop bucket
-    needs: [release]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Dispatch to bucket repo
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.BUCKET_GITHUB_TOKEN }}
-          repository: {{ scoop_bucket }}
-          event-type: update-manifest
           client-payload: '{"version": "${{ github.ref_name }}"}'
 {% endif %}"#;

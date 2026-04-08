@@ -32,9 +32,6 @@ scope = "@my-org"
 [distribute.homebrew]
 tap = "user/homebrew-my-tool"
 
-[distribute.scoop]
-bucket = "user/scoop-my-tool"
-
 [distribute.cargo]
 crate_name = "my-tool"
 
@@ -65,7 +62,6 @@ fn test_generate_all_channels_produces_expected_files() {
     assert!(paths.contains(&"install.sh"));
     assert!(paths.contains(&"install.ps1"));
     assert!(paths.contains(&"homebrew/my-tool.rb"));
-    assert!(paths.contains(&"scoop/my-tool.json"));
 
     // All files exist on disk
     for file in &files {
@@ -91,7 +87,6 @@ fn test_generated_ci_is_valid_yaml_structure() {
     assert!(ci.content.contains("release:"), "missing release job");
     assert!(ci.content.contains("publish-pypi:"), "missing pypi job");
     assert!(ci.content.contains("dispatch-homebrew:"), "missing homebrew dispatch");
-    assert!(ci.content.contains("dispatch-scoop:"), "missing scoop dispatch");
 
     // Must contain all targets in matrix
     assert!(ci.content.contains("aarch64-apple-darwin"));
@@ -165,22 +160,6 @@ fn test_generated_homebrew_formula() {
 }
 
 #[test]
-fn test_generated_scoop_manifest_is_valid_json() {
-    let (dir, files) = setup_and_generate(fixture_config());
-
-    let manifest = files.iter().find(|f| f.path.ends_with(".json")).unwrap();
-
-    // Verify JSON structure via key strings:
-    assert!(manifest.content.contains("\"description\""));
-    assert!(manifest.content.contains("\"architecture\""));
-    assert!(manifest.content.contains("\"bin\""));
-    assert!(manifest.content.contains("\"checkver\""));
-    assert!(manifest.content.contains("x86_64-pc-windows-msvc"));
-
-    let _ = fs::remove_dir_all(&dir);
-}
-
-#[test]
 fn test_github_only_config() {
     let config = r#"
 [package]
@@ -204,11 +183,9 @@ release = true
     assert!(!paths.iter().any(|p| p.ends_with(".rb")));
     assert!(!paths.iter().any(|p| p.ends_with(".json")));
 
-    // CI should not contain pypi/npm/homebrew/scoop jobs
     let ci = &files[0].content;
     assert!(!ci.contains("publish-pypi:"));
     assert!(!ci.contains("dispatch-homebrew:"));
-    assert!(!ci.contains("dispatch-scoop:"));
 
     let _ = fs::remove_dir_all(&dir);
 }

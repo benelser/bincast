@@ -12,7 +12,6 @@ Your binary is now available via:
 pip install your-tool         # PyPI
 npm install your-tool         # npm
 brew install your-tool        # Homebrew
-scoop install your-tool       # Scoop
 cargo install your-tool       # crates.io
 cargo binstall your-tool      # pre-built binary
 curl -sSL url | sh            # macOS/Linux
@@ -68,8 +67,6 @@ scope = "@my-org"
 [distribute.homebrew]
 tap = "you/homebrew-my-tool"
 
-[distribute.scoop]
-bucket = "you/scoop-my-tool"
 
 [distribute.cargo]
 crate_name = "my-tool"
@@ -92,11 +89,9 @@ Generated:
   install.sh                         macOS/Linux installer
   install.ps1                        Windows installer
   homebrew/my-tool.rb                Homebrew formula
-  scoop/my-tool.json                 Scoop manifest
   binstall.toml                      cargo-binstall metadata
 ```
 
-The generated CI workflow handles cross-compilation, maturin wheel building, SHA-256 checksums, smoke testing, SLSA attestation, OIDC trusted publishing to PyPI, npm platform package publishing, GitHub Release creation, and repository-dispatch to auto-update your Homebrew tap and Scoop bucket.
 
 ### 3. Publish
 
@@ -113,7 +108,6 @@ Or publish locally:
 bincast publish v0.1.0
 ```
 
-This builds the binary, creates archives, computes checksums, uploads to GitHub Releases, publishes to PyPI/npm/crates.io, and dispatches updates to your Homebrew tap and Scoop bucket.
 
 ### 4. Validate
 
@@ -131,7 +125,6 @@ Validates config syntax, checks name availability on PyPI/npm/crates.io, and ver
 | **PyPI** | maturin wheels with `bindings = "bin"`, OIDC trusted publishing |
 | **npm** | Platform-specific packages (esbuild pattern) |
 | **Homebrew** | Formula in your tap repo, auto-updated via repository-dispatch |
-| **Scoop** | Manifest in your bucket repo, auto-updated via repository-dispatch |
 | **crates.io** | `cargo publish` |
 | **cargo-binstall** | Metadata for pre-built binary installs |
 | **Install scripts** | `curl -sSL url \| sh` (unix) + `irm url \| iex` (windows) |

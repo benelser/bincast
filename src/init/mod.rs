@@ -68,8 +68,7 @@ pub fn run_with_flags(project_dir: &Path, flags: InitFlags) -> Result<()> {
             "must run interactively or provide --channels flag\n\n  \
              Examples:\n    \
              bincast init --channels github,cargo,install-scripts\n    \
-             bincast init --channels github,pypi,homebrew --npm-scope @myorg\n    \
-             bincast init --channels github,pypi,npm,homebrew,scoop,cargo,install-scripts --npm-scope @myorg --yes".into(),
+             bincast init --channels github,pypi,homebrew --npm-scope @myorg --yes".into(),
         ));
     };
 
@@ -113,9 +112,6 @@ pub fn run_with_flags(project_dir: &Path, flags: InitFlags) -> Result<()> {
     if let Some(tap) = &channel_config.homebrew_tap {
         stages::create_repo_if_needed(tap, &detection.gh_available);
     }
-    if let Some(bucket) = &channel_config.scoop_bucket {
-        stages::create_repo_if_needed(bucket, &detection.gh_available);
-    }
 
     stages::check_names(&config);
     stages::git_commit(project_dir);
@@ -142,7 +138,6 @@ fn channels_from_flags(flags: &InitFlags, det: &stages::Detection) -> Result<sta
 
     let owner = &det.owner;
     let name = &det.name;
-    // Use repo name (from git remote) for Homebrew/Scoop repos, not crate name
     let repo_name = &det.repo_name;
 
     let npm_scope = if channels.contains(&"npm") {
@@ -159,18 +154,11 @@ fn channels_from_flags(flags: &InitFlags, det: &stages::Detection) -> Result<sta
         None
     };
 
-    let scoop_bucket = if channels.contains(&"scoop") {
-        Some(flags.bucket.clone().unwrap_or_else(|| format!("{owner}/scoop-{repo_name}")))
-    } else {
-        None
-    };
-
     Ok(stages::ChannelConfig {
         install_scripts: channels.contains(&"install-scripts") || channels.contains(&"curl"),
         pypi_name: if channels.contains(&"pypi") || channels.contains(&"pip") { Some(name.clone()) } else { None },
         npm_scope,
         homebrew_tap,
-        scoop_bucket,
         cargo_crate: if channels.contains(&"cargo") { Some(name.clone()) } else { None },
     })
 }

@@ -31,7 +31,6 @@ Output:
 
 ```
   Distribution profile:
-    1. Maximum Reach — pip, npm, brew, scoop, cargo, curl, irm
     2. Rust Ecosystem — cargo, binstall, curl, irm
     3. Minimal — GitHub Releases + install scripts
     4. Custom
@@ -47,7 +46,6 @@ Only shown for channels that need user input:
 
 - **npm** → `npm scope (e.g., @my-org):`
 - **Homebrew** → `Homebrew tap [owner/homebrew-name]:` (smart default, enter accepts)
-- **Scoop** → `Scoop bucket [owner/scoop-name]:` (smart default, enter accepts)
 
 Channels without config (GitHub, PyPI, crates.io, install scripts, binstall) are enabled silently.
 
@@ -62,9 +60,7 @@ Show a summary of everything that will happen:
     Generate .github/workflows/release.yml
     Generate install.sh + install.ps1
     Generate homebrew/name.rb          ← only if homebrew enabled
-    Generate scoop/name.json           ← only if scoop enabled
     Create repo owner/homebrew-name    ← only if homebrew enabled
-    Create repo owner/scoop-name       ← only if scoop enabled
     Check name availability            ← for enabled registries
     git add + commit
 
@@ -79,7 +75,6 @@ Sequential, with progress:
   ✓ Wrote bincast.toml
   ✓ Generated 6 files
   ✓ Created owner/homebrew-name (private)
-  ✓ Created owner/scoop-name (private)
   ✓ PyPI: 'name' is available
   ✓ npm: '@scope/name' is available
   ✓ crates.io: 'name' is available

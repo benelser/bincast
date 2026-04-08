@@ -20,7 +20,6 @@ expect "Homebrew"
 send "y\r"
 expect "tap repo"
 send "\r"
-expect "Scoop"
 send "n\r"
 expect "crates.io"
 send "y\r"
@@ -42,7 +41,6 @@ if {![has $content "@myorg"]} { puts "FAIL: npm scope missing"; exit 1 }
 if {![has $content "\[distribute.homebrew\]"]} { puts "FAIL: homebrew missing"; exit 1 }
 if {![has $content "\[distribute.cargo\]"]} { puts "FAIL: cargo missing"; exit 1 }
 if {[has $content "\[distribute.pypi\]"]} { puts "FAIL: pypi present"; exit 1 }
-if {[has $content "\[distribute.scoop\]"]} { puts "FAIL: scoop present"; exit 1 }
 
 puts "ALL PASS: custom profile"
 exit 0

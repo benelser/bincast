@@ -69,8 +69,6 @@ scope = "@test-org"
 [distribute.homebrew]
 tap = "user/homebrew-test-tool"
 
-[distribute.scoop]
-bucket = "user/scoop-test-tool"
 
 [distribute.install_script]
 enabled = true
@@ -195,7 +193,6 @@ fn test_generate_produces_all_files() {
     assert!(dir.join("install.sh").exists());
     assert!(dir.join("install.ps1").exists());
     assert!(dir.join("homebrew/test-tool.rb").exists());
-    assert!(dir.join("scoop/test-tool.json").exists());
 
     let _ = fs::remove_dir_all(&dir);
 }

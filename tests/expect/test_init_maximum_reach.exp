@@ -12,7 +12,6 @@ expect "npm scope"
 send "@testorg\r"
 expect "Homebrew tap"
 send "\r"
-expect "Scoop bucket"
 send "\r"
 
 expect "Execute"
@@ -32,7 +31,6 @@ if {![has $content "\[distribute.pypi\]"]} { puts "FAIL: pypi missing"; exit 1 }
 if {![has $content "\[distribute.npm\]"]} { puts "FAIL: npm missing"; exit 1 }
 if {![has $content "@testorg"]} { puts "FAIL: npm scope missing"; exit 1 }
 if {![has $content "\[distribute.homebrew\]"]} { puts "FAIL: homebrew missing"; exit 1 }
-if {![has $content "\[distribute.scoop\]"]} { puts "FAIL: scoop missing"; exit 1 }
 if {![has $content "\[distribute.cargo\]"]} { puts "FAIL: cargo missing"; exit 1 }
 
 puts "ALL PASS: maximum reach profile"

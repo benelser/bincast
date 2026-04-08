@@ -54,9 +54,6 @@ pub fn serialize_config(config: &ReleaserConfig) -> String {
     if let Some(homebrew) = &config.distribute.homebrew {
         out.push_str(&format!("\n[distribute.homebrew]\ntap = \"{}\"\n", homebrew.tap));
     }
-    if let Some(scoop) = &config.distribute.scoop {
-        out.push_str(&format!("\n[distribute.scoop]\nbucket = \"{}\"\n", scoop.bucket));
-    }
     if let Some(cargo) = &config.distribute.cargo {
         out.push_str(&format!("\n[distribute.cargo]\ncrate_name = \"{}\"\n", cargo.crate_name));
     }
@@ -97,7 +94,6 @@ mod tests {
                 pypi: Some(PyPIConfig { package_name: "durable".into() }),
                 npm: Some(NpmConfig { scope: "@durable".into(), package_name: Some("cli".into()) }),
                 homebrew: Some(HomebrewConfig { tap: "benelser/homebrew-durable".into() }),
-                scoop: Some(ScoopConfig { bucket: "benelser/scoop-durable".into() }),
                 cargo: Some(CargoConfig { crate_name: "durable-runtime".into() }),
                 install_script: Some(InstallScriptConfig { enabled: true }),
             },

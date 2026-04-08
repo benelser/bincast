@@ -112,7 +112,6 @@ pub fn ask_profile() -> Result<Profile> {
         "  Choose [1-4]",
         3,
         &[
-            ("Every package manager", "pip install, npm install, brew, scoop, cargo, curl, irm"),
             ("Rust developers", "cargo install, cargo binstall, curl, irm"),
             ("GitHub Releases only", "download from releases page + install scripts"),
             ("Pick channels", "choose exactly which package managers"),
@@ -135,7 +134,6 @@ pub struct ChannelConfig {
     pub pypi_name: Option<String>,
     pub npm_scope: Option<String>,
     pub homebrew_tap: Option<String>,
-    pub scoop_bucket: Option<String>,
     pub cargo_crate: Option<String>,
 }
 
@@ -153,15 +151,12 @@ fn configure_maximum(det: &Detection) -> Result<ChannelConfig> {
     let npm_scope = prompts::input("npm scope (e.g., @my-org)")?;
     let default_tap = format!("{}/homebrew-{}", det.owner, det.repo_name);
     let tap = prompts::input_default("Homebrew tap", &default_tap)?;
-    let default_bucket = format!("{}/scoop-{}", det.owner, det.repo_name);
-    let bucket = prompts::input_default("Scoop bucket", &default_bucket)?;
 
     Ok(ChannelConfig {
         install_scripts: true,
         pypi_name: Some(det.name.clone()),
         npm_scope: Some(npm_scope),
         homebrew_tap: Some(tap),
-        scoop_bucket: Some(bucket),
         cargo_crate: Some(det.name.clone()),
     })
 }
@@ -172,7 +167,6 @@ fn configure_rust(det: &Detection) -> ChannelConfig {
         pypi_name: None,
         npm_scope: None,
         homebrew_tap: None,
-        scoop_bucket: None,
         cargo_crate: Some(det.name.clone()),
     }
 }
@@ -183,7 +177,6 @@ fn configure_minimal() -> ChannelConfig {
         pypi_name: None,
         npm_scope: None,
         homebrew_tap: None,
-        scoop_bucket: None,
         cargo_crate: None,
     }
 }
@@ -214,13 +207,6 @@ fn configure_custom(det: &Detection) -> Result<ChannelConfig> {
         None
     };
 
-    let scoop = if prompts::ask_yn("Scoop bucket", true)? {
-        let default = format!("{}/scoop-{}", det.owner, det.repo_name);
-        Some(prompts::input_default("  bucket repo", &default)?)
-    } else {
-        None
-    };
-
     let cargo = if prompts::ask_yn("crates.io (cargo install)", true)? {
         Some(det.name.clone())
     } else {
@@ -234,7 +220,6 @@ fn configure_custom(det: &Detection) -> Result<ChannelConfig> {
         pypi_name: pypi,
         npm_scope: npm,
         homebrew_tap: homebrew,
-        scoop_bucket: scoop,
         cargo_crate: cargo,
     })
 }
@@ -273,9 +258,6 @@ pub fn build_config(det: &Detection, ch: &ChannelConfig) -> ReleaserConfig {
     if let Some(tap) = &ch.homebrew_tap {
         config.distribute.homebrew = Some(HomebrewConfig { tap: tap.clone() });
     }
-    if let Some(bucket) = &ch.scoop_bucket {
-        config.distribute.scoop = Some(ScoopConfig { bucket: bucket.clone() });
-    }
     if let Some(crate_name) = &ch.cargo_crate {
         config.distribute.cargo = Some(CargoConfig { crate_name: crate_name.clone() });
     }
@@ -299,18 +281,10 @@ pub fn plan_actions(config: &ReleaserConfig, det: &Detection) -> Vec<String> {
     if config.distribute.homebrew.is_some() {
         actions.push(format!("Generate homebrew/{}.rb", config.package.name));
     }
-    if config.distribute.scoop.is_some() {
-        actions.push(format!("Generate scoop/{}.json", config.package.name));
-    }
     if let Some(hb) = &config.distribute.homebrew
         && det.gh_available
     {
         actions.push(format!("Create repo {} (private)", hb.tap));
-    }
-    if let Some(sc) = &config.distribute.scoop
-        && det.gh_available
-    {
-        actions.push(format!("Create repo {} (private)", sc.bucket));
     }
     actions.push("Check name availability".into());
     actions.push("git add + commit".into());
@@ -324,7 +298,6 @@ fn count_channels(config: &ReleaserConfig) -> usize {
     if config.distribute.pypi.is_some() { n += 1; }
     if config.distribute.npm.is_some() { n += 1; }
     if config.distribute.homebrew.is_some() { n += 1; }
-    if config.distribute.scoop.is_some() { n += 1; }
     if config.distribute.cargo.is_some() { n += 1; }
     n += 1; // binstall always
     n
@@ -408,7 +381,7 @@ pub fn git_commit(project_dir: &Path) {
     }
 
     let _ = Command::new("git")
-        .args(["add", "bincast.toml", ".github/", "install.sh", "install.ps1", "binstall.toml", "homebrew/", "scoop/"])
+        .args(["add", "bincast.toml", ".github/", "install.sh", "install.ps1", "binstall.toml", "homebrew/"])
         .current_dir(project_dir)
         .output();
 
@@ -459,7 +432,7 @@ pub fn handle_secrets(config: &ReleaserConfig, det: &Detection) {
         secrets_needed.push(SecretInfo {
             name: "NPM_TOKEN",
             url: "https://www.npmjs.com/settings/~/tokens",
-            instructions: "    Create at: https://www.npmjs.com/settings/~/tokens\n    Type: Automation\n    Permissions: Read and write".into(),
+            instructions: "    Create at: https://www.npmjs.com/settings/~/tokens/granular-access-tokens/new\n    Type: Granular Access Token\n    Packages: Read and write\n    Organizations: No access\n    Note: npm recommends Trusted Publishing (OIDC) for CI — see npm docs".into(),
         });
     }
     if let Some(hb) = &config.distribute.homebrew {
@@ -469,16 +442,6 @@ pub fn handle_secrets(config: &ReleaserConfig, det: &Detection) {
             instructions: format!(
                 "    Create at: https://github.com/settings/personal-access-tokens/new\n\n    Fine-grained personal access token:\n      Repository access: Only select repositories -> {}\n      Permissions:\n        Contents: Read and write\n        Metadata: Read-only (auto-selected)",
                 hb.tap
-            ),
-        });
-    }
-    if let Some(sc) = &config.distribute.scoop {
-        secrets_needed.push(SecretInfo {
-            name: "BUCKET_GITHUB_TOKEN",
-            url: "https://github.com/settings/personal-access-tokens/new",
-            instructions: format!(
-                "    Create at: https://github.com/settings/personal-access-tokens/new\n\n    Fine-grained personal access token:\n      Repository access: Only select repositories -> {}\n      Permissions:\n        Contents: Read and write\n        Metadata: Read-only (auto-selected)",
-                sc.bucket
             ),
         });
     }

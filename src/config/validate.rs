@@ -48,7 +48,6 @@ pub fn validate(config: &ReleaserConfig) -> Vec<String> {
         || config.distribute.pypi.is_some()
         || config.distribute.npm.is_some()
         || config.distribute.homebrew.is_some()
-        || config.distribute.scoop.is_some()
         || config.distribute.cargo.is_some()
         || config.distribute.install_script.is_some();
 
@@ -73,17 +72,6 @@ pub fn validate(config: &ReleaserConfig) -> Vec<String> {
             errors.push(format!(
                 "distribute.homebrew.tap must be owner/repo format (got '{}')",
                 homebrew.tap
-            ));
-        }
-    }
-
-    // Scoop bucket must be owner/repo format
-    if let Some(scoop) = &config.distribute.scoop {
-        let parts: Vec<&str> = scoop.bucket.split('/').collect();
-        if parts.len() != 2 || parts[0].is_empty() || parts[1].is_empty() {
-            errors.push(format!(
-                "distribute.scoop.bucket must be owner/repo format (got '{}')",
-                scoop.bucket
             ));
         }
     }

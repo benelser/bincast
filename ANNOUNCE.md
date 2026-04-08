@@ -16,7 +16,6 @@ That's it. Your binary is now available via:
 pip install your-tool         # PyPI
 npm install your-tool         # npm
 brew install your-tool        # Homebrew
-scoop install your-tool       # Scoop
 cargo install your-tool       # crates.io
 cargo binstall your-tool      # pre-built binary
 curl -sSL url | sh            # macOS/Linux
@@ -31,13 +30,11 @@ All with correct platform detection, SHA-256 checksums, SLSA build provenance, a
 
 A pattern is taking over developer tooling: build the kernel in Rust, distribute it everywhere. ruff replaced flake8 and black. uv replaced pip. Biome replaced prettier and eslint. The Rust binary is the product. The package managers are delivery vehicles.
 
-But Rust has no unified distribution story. To ship a binary to PyPI, npm, Homebrew, Scoop, and GitHub Releases today, you need:
 
 - **maturin** to build Python wheels
 - **cargo-dist** or hand-rolled CI for GitHub Releases
 - **Custom npm scaffolding** for platform-specific packages
 - **A separate Homebrew tap repo** with a manually updated formula
-- **A separate Scoop bucket repo** with a manually updated manifest
 - **Install scripts** you write yourself
 - **500+ lines of GitHub Actions YAML** stitching it all together
 
@@ -86,8 +83,6 @@ scope = "@my-org"
 [distribute.homebrew]
 tap = "you/homebrew-my-tool"
 
-[distribute.scoop]
-bucket = "you/scoop-my-tool"
 
 [distribute.cargo]
 crate_name = "my-tool"
@@ -110,7 +105,6 @@ Generated:
   install.sh                         macOS/Linux installer
   install.ps1                        Windows installer
   homebrew/my-tool.rb                Homebrew formula
-  scoop/my-tool.json                 Scoop manifest
 ```
 
 The generated CI workflow handles:
@@ -123,7 +117,6 @@ The generated CI workflow handles:
 - crates.io publishing via OIDC
 - npm platform package publishing
 - GitHub Release creation with all assets
-- Repository-dispatch to auto-update your Homebrew tap and Scoop bucket
 - README transformation for PyPI compatibility
 
 ### 3. Publish
@@ -185,7 +178,6 @@ This validates everything: config syntax, name availability on PyPI/npm/crates.i
 | **PyPI** | maturin wheels with `bindings = "bin"`, OIDC trusted publishing |
 | **npm** | Platform-specific packages (esbuild pattern), OIDC publishing |
 | **Homebrew** | Formula in your tap repo, auto-updated via repository-dispatch |
-| **Scoop** | Manifest in your bucket repo, auto-updated via repository-dispatch |
 | **crates.io** | `cargo publish` with OIDC auth |
 | **cargo-binstall** | Metadata for pre-built binary installs |
 | **Install scripts** | `curl -sSL url \| sh` (unix) + `irm url \| iex` (windows) |

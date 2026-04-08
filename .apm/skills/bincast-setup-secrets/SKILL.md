@@ -33,7 +33,6 @@ Read `bincast.toml` and check which channels are enabled:
 | `[distribute.pypi]` | `PYPI_TOKEN` | https://pypi.org/manage/account/token/ |
 | `[distribute.npm]` | `NPM_TOKEN` | https://www.npmjs.com/settings/~/tokens |
 | `[distribute.homebrew]` | `TAP_GITHUB_TOKEN` | https://github.com/settings/personal-access-tokens/new |
-| `[distribute.scoop]` | `BUCKET_GITHUB_TOKEN` | https://github.com/settings/personal-access-tokens/new |
 | `[distribute.github]` | `GITHUB_TOKEN` | **Automatic** — no action needed |
 
 Check which are already set:
@@ -87,10 +86,12 @@ For PYPI_TOKEN:
 For NPM_TOKEN:
 ```
 "You should see the npm tokens page. Please:
-  1. Click 'Generate New Token' → 'Classic Token'
-  2. Name: bincast-release
-  3. Type: Automation
-  4. Click 'Generate Token'
+  1. Click 'Generate New Token' → 'Granular Access Token'
+  2. Token name: bincast-release
+  3. Expiration: 90 days
+  4. Packages: Read and write
+  5. Organizations: No access
+  6. Click 'Generate Token'
   5. Copy the token"
 ```
 

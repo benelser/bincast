@@ -172,7 +172,6 @@ pub struct DistributeConfig {
     pub pypi: Option<PyPIConfig>,
     pub npm: Option<NpmConfig>,
     pub homebrew: Option<HomebrewConfig>,
-    pub scoop: Option<ScoopConfig>,
     pub cargo: Option<CargoConfig>,
     pub install_script: Option<InstallScriptConfig>,
 }
@@ -196,11 +195,6 @@ pub struct NpmConfig {
 #[derive(Debug, Clone)]
 pub struct HomebrewConfig {
     pub tap: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct ScoopConfig {
-    pub bucket: String,
 }
 
 #[derive(Debug, Clone)]
@@ -357,15 +351,6 @@ impl DistributeConfig {
             })
         }).transpose()?;
 
-        let scoop = val.get("scoop").map(|v| -> Result<ScoopConfig, Error> {
-            Ok(ScoopConfig {
-                bucket: v
-                    .get_str("bucket")
-                    .ok_or_else(|| Error::Config("distribute.scoop.bucket is required".into()))?
-                    .to_string(),
-            })
-        }).transpose()?;
-
         let cargo = val.get("cargo").map(|v| -> Result<CargoConfig, Error> {
             Ok(CargoConfig {
                 crate_name: v
@@ -386,7 +371,6 @@ impl DistributeConfig {
             pypi,
             npm,
             homebrew,
-            scoop,
             cargo,
             install_script,
         })

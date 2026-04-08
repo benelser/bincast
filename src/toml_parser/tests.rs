@@ -143,8 +143,6 @@ scope = "@durable"
 [distribute.homebrew]
 tap = "benelser/homebrew-durable"
 
-[distribute.scoop]
-bucket = "benelser/scoop-durable"
 
 [distribute.cargo]
 crate_name = "durable-runtime"
@@ -170,10 +168,6 @@ enabled = true
     assert_eq!(
         val.get_str("distribute.homebrew.tap"),
         Some("benelser/homebrew-durable")
-    );
-    assert_eq!(
-        val.get_str("distribute.scoop.bucket"),
-        Some("benelser/scoop-durable")
     );
     assert_eq!(
         val.get_str("distribute.cargo.crate_name"),

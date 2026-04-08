@@ -38,10 +38,6 @@ pub fn build_pipeline(config: &ReleaserConfig) -> Pipeline {
             config.distribute.homebrew.is_some(),
             Box::new(HomebrewDispatchPipe),
         )
-        .push_if(
-            config.distribute.scoop.is_some(),
-            Box::new(ScoopDispatchPipe),
-        )
 }
 
 // --- Real publisher pipes ---
@@ -286,40 +282,6 @@ impl Pipe for HomebrewDispatchPipe {
     }
 }
 
-struct ScoopDispatchPipe;
-impl Pipe for ScoopDispatchPipe {
-    fn name(&self) -> &str { "dispatch-scoop" }
-    fn run(&self, ctx: &mut Context) -> Result<(), String> {
-        let config = ctx.config.as_ref().ok_or("no config")?;
-        let scoop = config.distribute.scoop.as_ref().ok_or("scoop not configured")?;
-        let version = ctx.version.as_ref().ok_or("no version")?;
-
-        let token = std::env::var("BUCKET_GITHUB_TOKEN")
-            .or_else(|_| std::env::var("GITHUB_TOKEN"))
-            .or_else(|_| std::env::var("GH_TOKEN"))
-            .map_err(|_| "BUCKET_GITHUB_TOKEN not set — needed for Scoop dispatch")?;
-
-        let bucket_url = format!("https://github.com/{}", scoop.bucket);
-        let (owner, repo) = crate::cargo::parse_github_url(&bucket_url)
-            .ok_or_else(|| format!("invalid bucket format: {}", scoop.bucket))?;
-
-        eprintln!("  dispatching to {owner}/{repo}...");
-        gh::repository_dispatch(owner, repo, "update-manifest", version, &token)?;
-        eprintln!("  ✓ Scoop bucket update dispatched");
-        Ok(())
-    }
-    fn dry_run(&self, ctx: &Context) -> DryRunEntry {
-        let bucket = ctx.config.as_ref()
-            .and_then(|c| c.distribute.scoop.as_ref())
-            .map(|s| s.bucket.as_str())
-            .unwrap_or("unknown");
-        DryRunEntry {
-            pipe: "dispatch-scoop".into(),
-            description: format!("would dispatch repository event to '{bucket}' with version + checksums"),
-        }
-    }
-}
-
 /// Base64 encode — for HTTP Basic auth. No deps.
 fn base64_encode(input: &str) -> String {
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -398,8 +360,6 @@ crate_name = "my-tool-rs"
 [distribute.homebrew]
 tap = "user/homebrew-my-tool"
 
-[distribute.scoop]
-bucket = "user/scoop-my-tool"
 "#).unwrap()
     }
 
@@ -410,8 +370,8 @@ bucket = "user/scoop-my-tool"
         let mut ctx = Context::with_config(config, true);
         let report = pipeline.execute(&mut ctx).unwrap();
 
-        // build + archive + checksum + smoke + github + pypi + npm + crates + homebrew + scoop = 10
-        assert_eq!(report.dry_run_entries.len(), 10);
+        // build + archive + checksum + smoke + github + pypi + npm + crates + homebrew = 9
+        assert_eq!(report.dry_run_entries.len(), 9);
 
         let names: Vec<&str> = report.dry_run_entries.iter().map(|e| e.pipe.as_str()).collect();
         assert!(names.contains(&"build"));
@@ -423,7 +383,6 @@ bucket = "user/scoop-my-tool"
         assert!(names.contains(&"publish-npm"));
         assert!(names.contains(&"publish-crates"));
         assert!(names.contains(&"dispatch-homebrew"));
-        assert!(names.contains(&"dispatch-scoop"));
     }
 
     #[test]

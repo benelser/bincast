@@ -46,8 +46,6 @@ crate_name = "twin-test"
 [distribute.homebrew]
 tap = "user/homebrew-twin-test"
 
-[distribute.scoop]
-bucket = "user/scoop-twin-test"
 "#).unwrap()
 }
 
@@ -112,7 +110,7 @@ fn test_publish_dry_run_with_all_twins() {
     let report = pipeline.execute(&mut ctx).unwrap();
 
     // All 10 pipes should report dry-run entries
-    assert_eq!(report.dry_run_entries.len(), 10, "expected 10 dry-run entries, got: {:?}",
+    assert_eq!(report.dry_run_entries.len(), 9, "expected 9 dry-run entries, got: {:?}",
         report.dry_run_entries.iter().map(|e| &e.pipe).collect::<Vec<_>>());
 }
 
@@ -188,19 +186,6 @@ fn test_homebrew_dispatch_against_twin() {
     assert_eq!(snap.dispatches.len(), 1);
     assert_eq!(snap.dispatches[0].event_type, "update-formula");
     assert_eq!(snap.dispatches[0].version, "v0.3.0");
-}
-
-#[test]
-fn test_scoop_dispatch_against_twin() {
-    let twins = TwinEnvironment::start();
-
-    bincast::http::github::repository_dispatch(
-        "user", "scoop-twin-test", "update-manifest", "v0.3.0", "test-token"
-    ).unwrap();
-
-    let snap = twins.github.snapshot();
-    assert_eq!(snap.dispatches.len(), 1);
-    assert_eq!(snap.dispatches[0].event_type, "update-manifest");
 }
 
 #[test]

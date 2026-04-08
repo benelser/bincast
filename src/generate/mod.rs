@@ -2,7 +2,6 @@ mod ci;
 mod homebrew;
 mod install;
 pub mod receivers;
-mod scoop;
 pub mod validate;
 
 use std::fs;
@@ -55,15 +54,6 @@ pub fn run(config: &ReleaserConfig, output_dir: &Path) -> Result<Vec<GeneratedFi
         files.push(GeneratedFile {
             path: format!("homebrew/{}.rb", config.package.name),
             content: formula,
-        });
-    }
-
-    // Scoop manifest
-    if config.distribute.scoop.is_some() {
-        let manifest = scoop::render(&ctx)?;
-        files.push(GeneratedFile {
-            path: format!("scoop/{}.json", config.package.name),
-            content: manifest,
         });
     }
 
