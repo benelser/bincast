@@ -108,7 +108,7 @@ For each missing secret:
 |--------|-------------|
 | `CARGO_REGISTRY_TOKEN` | New Token, name: `bincast-release`, scopes: publish-new + publish-update |
 | `PYPI_TOKEN` | Token name: `bincast-release`, scope: entire account or project-scoped |
-| `NPM_TOKEN` | Granular Access Token, name: `bincast-release`, expiration: 90 days, packages: read and write |
+| `NPM_TOKEN` | Granular Access Token, name: `bincast-release`, expiration: 90 days, packages: read and write, organizations: no access. Granular tokens automatically satisfy 2FA requirements for CI publishing. npm does not support OIDC trusted publishing — a token is always required. |
 | `TAP_GITHUB_TOKEN` | Fine-grained PAT, name: `bincast-tap`, repository access: tap repo only, permissions: Contents read/write |
 
 **4. User sets the secret** (agent never sees the token):

@@ -438,7 +438,7 @@ pub fn handle_secrets(config: &ReleaserConfig, det: &Detection) {
         secrets_needed.push(SecretInfo {
             name: "NPM_TOKEN",
             url: "https://www.npmjs.com/settings/~/tokens",
-            instructions: "    Create at: https://www.npmjs.com/settings/~/tokens/granular-access-tokens/new\n    Type: Granular Access Token\n    Packages: Read and write\n    Organizations: No access\n    Note: npm recommends Trusted Publishing (OIDC) for CI — see npm docs".into(),
+            instructions: "    Create at: https://www.npmjs.com/settings/~/tokens/granular-access-tokens/new\n    Type: Granular Access Token\n    Packages: Read and write\n    Organizations: No access\n    Granular tokens automatically satisfy 2FA requirements for CI".into(),
         });
     }
     if let Some(hb) = &config.distribute.homebrew {
